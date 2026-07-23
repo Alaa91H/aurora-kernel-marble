@@ -79,17 +79,22 @@ fi
 
 # normalize to a stable path for build.sh.
 # The ACK `repo` manifest places the kernel source under `<dir>/common/`
-# (project path="common" name="kernel/common"). When repo is used, the
-# real source tree is one level deeper than the manifest dir. When the
-# git-clone fallback is used, the source IS the clone dir.
+# (project path="common" name="kernel/common"), but the bazel wrapper
+# (tools/bazel linkfile) lives at the manifest ROOT.
+# So we expose BOTH:
+#   kernel-src  -> <dir>/common   (the actual Linux source tree, for make)
+#   kernel-root -> <dir>          (the manifest root, for bazel/kleaf)
 if [[ -d "$KERNEL_DIR/common/Makefile" ]] || [[ -d "$KERNEL_DIR/common/Kbuild" ]]; then
   ln -sfn "$KERNEL_DIR/common" kernel-src || true
+  ln -sfn "$KERNEL_DIR" kernel-root || true
   log "kernel source at $KERNEL_DIR/common/ (repo manifest layout)"
 elif [[ -d "$KERNEL_DIR/Makefile" ]] || [[ -d "$KERNEL_DIR/Kbuild" ]]; then
   ln -sfn "$KERNEL_DIR" kernel-src || true
+  ln -sfn "$KERNEL_DIR" kernel-root || true
   log "kernel source at $KERNEL_DIR/ (direct clone layout)"
 else
   ln -sfn "$KERNEL_DIR" kernel-src || true
+  ln -sfn "$KERNEL_DIR" kernel-root || true
   log "WARNING: could not locate Makefile/Kbuild under $KERNEL_DIR; symlink may be wrong"
 fi
 ok "kernel source ready at ${KERNEL_DIR} (ACK 6.18 LTS)"

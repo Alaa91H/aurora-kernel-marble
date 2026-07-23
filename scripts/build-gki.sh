@@ -16,7 +16,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 KERNEL_SRC="${KERNEL_SRC:-$ROOT/kernel-src}"
+KERNEL_ROOT="${KERNEL_ROOT:-$ROOT/kernel-root}"
 OUT_DIR="${OUT_DIR:-$ROOT/out}"
+CFG_DIR="$ROOT/configs"
 DIST_DIR="${DIST_DIR:-$ROOT/dist}"
 DEFCONFIG="${DEFCONFIG:-marble_defconfig}"
 ARCH=arm64
@@ -78,23 +80,29 @@ log "merging defconfig + fragments"
 bash scripts/config-merge.sh
 
 # ---------------------------------------------------------------------------
-# 2. Build — prefer Bazel (kleaf, the official ACK build system) if present,
-#    fall back to raw make. ACK 6.18 ships a tools/bazel linkfile that wraps
-#    the entire GKI build including dist artifacts.
+# 2. Build — prefer Bazel/kleaf (official ACK build system) if present.
+#    Bazel runs from the manifest ROOT (kernel-root), not from common/.
+#    The kleaf build target is //common:kernel_aarch64_dist.
 # ---------------------------------------------------------------------------
-BAZEL="$ROOT/$KERNEL_SRC/../tools/bazel"
-[[ -x "$BAZEL" ]] || BAZEL=""
-# also check inside the kernel src dir itself
-[[ -x "$KERNEL_SRC/tools/bazel" ]] && BAZEL="$KERNEL_SRC/tools/bazel"
+BAZEL=""
+# bazel linkfile lives at the manifest root
+[[ -x "$KERNEL_ROOT/tools/bazel" ]] && BAZEL="$KERNEL_ROOT/tools/bazel"
 # or on PATH
-command -v bazel >/dev/null 2>&1 && BAZEL="${BAZEL:-$(command -v bazel)}"
+[[ -z "$BAZEL" ]] && command -v bazel >/dev/null 2>&1 && BAZEL="$(command -v bazel)"
 
 if [[ -n "$BAZEL" ]]; then
   log "building GKI via Bazel/kleaf (official ACK method): $BAZEL"
-  # kleaf builds the GKI image + modules + dist into out/ and dist/
-  ( cd "$(dirname "$BAZEL")/.." && \
-    "$BAZEL" build //common:kernel_aarch64_dist --lto=thin \
-      --jobs "$JOBS" --//common:defconfig_fragment="$ROOT/configs/marble_defconfig" \
+  # kleaf: build the aarch64 GKI kernel + dist artifacts.
+  # --config=fast = no debug info, faster. --lto=thin = ThinLTO.
+  # Defconfig fragments are applied via --kleaf_ext_fragment.
+  FRAG_ARG=""
+  if [[ -f "$CFG_DIR/marble_defconfig" ]]; then
+    # kleaf accepts fragments as label or path; use path form
+    FRAG_ARG="--kernel_build_ext_defconfig=$CFG_DIR/marble_defconfig"
+  fi
+  ( cd "$KERNEL_ROOT" && \
+    "$BAZEL" build //common:kernel_aarch64_dist \
+      --config=fast --lto=thin --jobs "$JOBS" $FRAG_ARG \
       2>&1 | tail -400 ) || {
     log "bazel build failed; falling back to raw make"
     BAZEL=""
@@ -103,9 +111,9 @@ fi
 
 if [[ -z "$BAZEL" ]]; then
   # ---------------------------------------------------------------------------
-  # 2a. Raw make fallback
+  # 2a. Raw make fallback — KERNEL_SRC points at common/ (has Makefile)
   # ---------------------------------------------------------------------------
-  log "olddefconfig (raw make)"
+  log "olddefconfig (raw make, src=$KERNEL_SRC)"
   make -C "$KERNEL_SRC" O="$OUT_DIR" LLVM=1 CC="$CC" LD="$LD" olddefconfig
 
   log "building GKI core (Image, modules, dtbs) — $JOBS jobs"
