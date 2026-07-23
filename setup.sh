@@ -103,9 +103,14 @@ log "integrating KernelSU-Next into ACK tree"
 KSU_BIN="$KSU_DIR/kernel"
 KSU_DST="kernel-src/drivers/kernelsu"
 if [[ -d "$KSU_BIN" ]]; then
+  # ensure drivers/ exists in the (possibly symlinked) kernel tree
+  mkdir -p "kernel-src/drivers" 2>/dev/null || true
   rm -rf "$KSU_DST"
-  cp -a "$KSU_BIN" "$KSU_DST"
-  ok "KernelSU driver copied to drivers/kernelsu"
+  if cp -a "$KSU_BIN" "$KSU_DST"; then
+    ok "KernelSU driver copied to drivers/kernelsu"
+  else
+    log "warning: KernelSU driver copy failed; root disabled this build"
+  fi
 else
   log "KernelSU-Next/kernel not found; integration skipped (root disabled)"
 fi
