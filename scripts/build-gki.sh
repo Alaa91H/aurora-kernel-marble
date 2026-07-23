@@ -118,31 +118,59 @@ if [[ -z "$BAZEL" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Validate artifacts
+# 4. Locate build artifacts — Bazel and make use different output layouts
 # ---------------------------------------------------------------------------
-IMG="$OUT_DIR/arch/arm64/boot/Image"
-[[ -f "$IMG" ]] || err "GKI Image not produced"
+# Bazel/kleaf dist: <kernel-root>/bazel-bin/common/kernel_aarch64_dist/
+# Raw make:          $OUT_DIR/arch/arm64/boot/Image
+BAZEL_DIST="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64_dist"
 
-# Module.symvers is the contract for vendor modules
-SYMVERS="$OUT_DIR/Module.symvers"
-[[ -f "$SYMVERS" ]] || err "Module.symvers missing — cannot build vendor modules"
+IMG=""
+SYMVERS=""
+MODULES_BUILTIN=""
 
-# built-in modules list (for initramfs / depmod)
-[[ -f "$OUT_DIR/modules.builtin" ]] || err "modules.builtin missing"
+if [[ -d "$BAZEL_DIST" ]]; then
+  log "locating artifacts in Bazel dist: $BAZEL_DIST"
+  # Bazel dist contains Image, Module.symvers, modules.builtin, etc.
+  IMG=$(find "$BAZEL_DIST" -name 'Image' -type f 2>/dev/null | head -1)
+  SYMVERS=$(find "$BAZEL_DIST" -name 'Module.symvers' -type f 2>/dev/null | head -1)
+  MODULES_BUILTIN=$(find "$BAZEL_DIST" -name 'modules.builtin' -type f 2>/dev/null | head -1)
+  # Bazel may also produce vmlinux.symvers (renamed) or a symvers file
+  [[ -z "$SYMVERS" ]] && SYMVERS=$(find "$BAZEL_DIST" -name 'vmlinux.symvers' -type f 2>/dev/null | head -1)
+elif [[ -d "$OUT_DIR/arch/arm64/boot" ]]; then
+  IMG="$OUT_DIR/arch/arm64/boot/Image"
+  SYMVERS="$OUT_DIR/Module.symvers"
+  MODULES_BUILTIN="$OUT_DIR/modules.builtin"
+fi
 
+[[ -f "$IMG" ]] || { err "GKI Image not found"; ls -la "$BAZEL_DIST" 2>/dev/null | head -30; exit 1; }
 ok "GKI Image: $IMG"
-ok "symvers:  $SYMVERS"
+
+if [[ -z "$SYMVERS" ]] || [[ ! -f "$SYMVERS" ]]; then
+  log "warning: Module.symvers not found; vendor module build will be limited"
+  SYMVERS=""
+fi
+[[ -n "$SYMVERS" ]] && ok "symvers: $SYMVERS"
 
 # ---------------------------------------------------------------------------
 # 5. Copy to DIST_DIR for the packaging step
 # ---------------------------------------------------------------------------
-cp -f "$IMG"                                      "$DIST_DIR/Image"
-cp -f "$SYMVERS"                                   "$DIST_DIR/vmlinux.symvers"
-cp -f "$OUT_DIR/modules.builtin"                   "$DIST_DIR/modules.builtin"
-cp -f "$OUT_DIR/modules.builtin.modinfo"           "$DIST_DIR/modules.builtin.modinfo" 2>/dev/null || true
-cp -f "$OUT_DIR/System.map"                        "$DIST_DIR/System.map" 2>/dev/null || true
+mkdir -p "$DIST_DIR"
+cp -f "$IMG" "$DIST_DIR/Image"
+[[ -n "$SYMVERS" ]] && cp -f "$SYMVERS" "$DIST_DIR/vmlinux.symvers"
+[[ -n "$MODULES_BUILTIN" ]] && [[ -f "$MODULES_BUILTIN" ]] && cp -f "$MODULES_BUILTIN" "$DIST_DIR/modules.builtin"
 
-# dtbo from our marble DTS
+# copy any additional dist artifacts from bazel (System.map, vmlinux, etc.)
+if [[ -d "$BAZEL_DIST" ]]; then
+  for f in System.map vmlinux modules.builtin.modinfo initramfs.cpio.gz; do
+    found=$(find "$BAZEL_DIST" -name "$f" -type f 2>/dev/null | head -1)
+    [[ -n "$found" ]] && cp -f "$found" "$DIST_DIR/$f" 2>/dev/null
+  done
+  # copy all .ko modules
+  mkdir -p "$DIST_DIR/modules"
+  find "$BAZEL_DIST" -name '*.ko' -exec cp -f {} "$DIST_DIR/modules/" \; 2>/dev/null
+fi
+
+# dtbo from our marble DTS (make path; bazel doesn't build our custom DTS)
 DTBO="$OUT_DIR/arch/arm64/boot/dtbo.img"
 [[ -f "$DTBO" ]] && cp -f "$DTBO" "$DIST_DIR/dtbo.img"
 

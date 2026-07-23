@@ -26,17 +26,21 @@ err()  { printf "\033[1;31m[err]\033[0m %s\n" "$*" >&2; exit 1; }
 [[ -f "$DIST_DIR/vmlinux.symvers" ]] || err "GKI not built. Run scripts/build-gki.sh first."
 
 # ---------------------------------------------------------------------------
-# Toolchain (same as GKI build for ABI consistency)
+# Toolchain — source the env written by toolchain.sh (same as GKI build)
 # ---------------------------------------------------------------------------
+TC_ENV="$ROOT/toolchains/toolchain.env"
+[[ -f "$TC_ENV" ]] && source "$TC_ENV"
 TC_BIN="${TC_BIN:-$ROOT/toolchains/proton-clang/bin}"
-[[ -x "$TC_BIN/clang" ]] || err "proton-clang missing"
-export CC="$TC_BIN/clang"
-export LD="$TC_BIN/ld.lld"
-export LLVM_AR="$TC_BIN/llvm-ar"
-export LLVM_NM="$TC_BIN/llvm-nm"
-export LLVM_OBJCOPY="$TC_BIN/llvm-objcopy"
-export LLVM_OBJDUMP="$TC_BIN/llvm-objdump"
-export LLVM_STRIP="$TC_BIN/llvm-strip"
+CLANG_BIN="${CC:-clang}"
+command -v "$CLANG_BIN" >/dev/null 2>&1 || [[ -x "$TC_BIN/$CLANG_BIN" ]] && CLANG_BIN="$TC_BIN/$CLANG_BIN"
+command -v "$CLANG_BIN" >/dev/null 2>&1 || err "clang not available; run scripts/toolchain.sh"
+export CC="$CLANG_BIN"
+export LD="${LD:-ld.lld}"
+export LLVM_AR="${LLVM_AR:-llvm-ar}"
+export LLVM_NM="${LLVM_NM:-llvm-nm}"
+export LLVM_OBJCOPY="${LLVM_OBJCOPY:-llvm-objcopy}"
+export LLVM_OBJDUMP="${LLVM_OBJDUMP:-llvm-objdump}"
+export LLVM_STRIP="${LLVM_STRIP:-llvm-strip}"
 export ARCH
 export PATH="$TC_BIN:$PATH"
 export KBUILD_BUILD_USER=aurora
