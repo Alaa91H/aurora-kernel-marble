@@ -27,19 +27,39 @@ ok()   { printf "\033[1;32m[ok]\033[0m %s\n" "$*"; }
 err()  { printf "\033[1;31m[err]\033[0m %s\n" "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
-# Toolchain
+# Toolchain — source the env written by toolchain.sh (system clang preferred)
 # ---------------------------------------------------------------------------
+TC_ENV="$ROOT/toolchains/toolchain.env"
+if [[ ! -f "$TC_ENV" ]]; then
+  log "no toolchain.env; bootstrapping toolchain"
+  bash scripts/toolchain.sh
+fi
+if [[ -f "$TC_ENV" ]]; then
+  # shellcheck disable=SC1090
+  source "$TC_ENV"
+fi
 TC_BIN="${TC_BIN:-$ROOT/toolchains/proton-clang/bin}"
-[[ -x "$TC_BIN/clang" ]] || { log "proton-clang missing; bootstrapping"; bash scripts/toolchain.sh; }
-[[ -x "$TC_BIN/clang" ]] || err "clang not available"
 
-export CC="$TC_BIN/clang"
-export LD="$TC_BIN/ld.lld"
-export LLVM_AR="$TC_BIN/llvm-ar"
-export LLVM_NM="$TC_BIN/llvm-nm"
-export LLVM_OBJCOPY="$TC_BIN/llvm-objcopy"
-export LLVM_OBJDUMP="$TC_BIN/llvm-objdump"
-export LLVM_STRIP="$TC_BIN/llvm-strip"
+# resolve the actual clang binary (handles clang-17 symlink names)
+CLANG_BIN="${CC:-clang}"
+if ! command -v "$CLANG_BIN" >/dev/null 2>&1 && [[ -x "$TC_BIN/$CLANG_BIN" ]]; then
+  CLANG_BIN="$TC_BIN/$CLANG_BIN"
+fi
+if ! command -v "$CLANG_BIN" >/dev/null 2>&1; then
+  err "clang not available; run ./scripts/toolchain.sh"
+fi
+
+# point LD at lld (prefer same dir as clang, else PATH)
+LD_BIN="ld.lld"
+command -v "$LD_BIN" >/dev/null 2>&1 || { [[ -x "$TC_BIN/$LD_BIN" ]] && LD_BIN="$TC_BIN/$LD_BIN"; }
+
+export CC="$CLANG_BIN"
+export LD="$LD_BIN"
+export LLVM_AR="${LLVM_AR:-llvm-ar}";        command -v "$LLVM_AR" >/dev/null 2>&1 || LLVM_AR="$TC_BIN/llvm-ar"
+export LLVM_NM="${LLVM_NM:-llvm-nm}";        command -v "$LLVM_NM" >/dev/null 2>&1 || LLVM_NM="$TC_BIN/llvm-nm"
+export LLVM_OBJCOPY="${LLVM_OBJCOPY:-llvm-objcopy}"; command -v "$LLVM_OBJCOPY" >/dev/null 2>&1 || LLVM_OBJCOPY="$TC_BIN/llvm-objcopy"
+export LLVM_OBJDUMP="${LLVM_OBJDUMP:-llvm-objdump}"; command -v "$LLVM_OBJDUMP" >/dev/null 2>&1 || LLVM_OBJDUMP="$TC_BIN/llvm-objdump"
+export LLVM_STRIP="${LLVM_STRIP:-llvm-strip}";       command -v "$LLVM_STRIP" >/dev/null 2>&1 || LLVM_STRIP="$TC_BIN/llvm-strip"
 export ARCH
 export PATH="$TC_BIN:$PATH"
 export KBUILD_BUILD_USER=aurora

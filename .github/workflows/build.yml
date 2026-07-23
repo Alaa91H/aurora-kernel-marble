@@ -50,6 +50,11 @@ jobs:
             zip zlib1g-dev e2fsprogs \
             cpio device-tree-compiler \
             openssl
+          # newer clang than 22.04 default (14) for better 6.18 support
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - 2>/dev/null || true
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update -y
+          sudo apt-get install -y clang-17 lld-17 llvm-17 2>/dev/null || sudo apt-get install -y clang lld
 
       - name: Install Google repo tool (for ACK manifest)
         run: |
@@ -68,17 +73,17 @@ jobs:
         run: ./scripts/vendor-fetch.sh
         continue-on-error: true
 
-      - name: Bootstrap Proton-Clang toolchain
-        run: ./scripts/toolchain.sh
+      - name: Bootstrap toolchain
+        run: bash scripts/toolchain.sh
 
       - name: Apply patch queue
-        run: ./scripts/patch-apply.sh || true
+        run: bash scripts/patch-apply.sh || true
 
       - name: Build (full GKI + vendor + pack pipeline)
         run: |
           chmod +x build.sh
           KSU="${{ github.event.inputs.ksu || '1' }}" \
-          ./build.sh "${{ github.event.inputs.stage || 'full' }}"
+          bash build.sh "${{ github.event.inputs.stage || 'full' }}"
 
       - name: Gather artifacts
         id: artifact
