@@ -1,0 +1,84 @@
+# build.config.marble
+#
+# Google ACK build configuration for Aurora-Kernel (marble / SM7475).
+# Consumed by the ACK build system (build/build.sh / build_btf) and by
+# our own build.sh which sources these variables.
+#
+# Format: KEY=VALUE pairs, sourced by bash. No quoting tricks.
+
+# ---------------------------------------------------------------------------
+# Kernel
+# ---------------------------------------------------------------------------
+DEFCONFIG=marble_defconfig
+PRE_DEFCONFIG_CMDS=""
+POST_DEFCONFIG_CMDS=""
+KERNEL_DIR=.
+BUILD_CONFIG=build.config.marble
+
+# GKI: build the generic kernel image + modules, not a monolithic Image
+MAKE_GOALS="
+Image
+modules
+dtbs
+"
+
+# ---------------------------------------------------------------------------
+# Toolchain — AOSP prebuilt clang (ACK-compatible, version-pinned)
+# ---------------------------------------------------------------------------
+AOSP_CLANG_TOOLCHAIN=${AOSP_CLANG_TOOLCHAIN:-prebuilts/clang/host/linux-x86/clang-r475365b}
+CC=clang
+LD=ld.lld
+AR=llvm-ar
+NM=llvm-nm
+OBJCOPY=llvm-objcopy
+OBJDUMP=llvm-objdump
+READELF=llvm-readelf
+STRIP=llvm-strip
+
+EXTRA_CFLAGS="-O3 -pipe -fno-plt -fmacro-prefix-map=${ROOT_DIR}=."
+EXTRA_LDFLAGS="-fuse-ld=lld --icf=all"
+EXTRA_KCONFIG_FILE=${ROOT_DIR}/configs/marble_defconfig
+
+# LTO + CFI (ACK defaults)
+LTO=thin
+CFI=true
+KMI_SYMBOL_LIST_ADD_ONLY=true
+
+# ---------------------------------------------------------------------------
+# ABI / KMI symbol list (for GKI module compatibility)
+# ---------------------------------------------------------------------------
+# The ACK build system uses these to enforce a stable kernel module interface.
+KMI_SYMBOL_LIST=android/abi_gki_aarch64
+ADDITIONAL_KMI_SYMBOL_LISTS="
+android/abi_gki_aarch64_core
+android/abi_gki_aarch64_qcom
+"
+KMI_ENFORCED=true
+# Don't abort the build if a vendor module references an unlisted symbol
+# during development; flip to true for release.
+ABI_BUILD_COUNT_SYMBOL_LISTS=true
+
+# ---------------------------------------------------------------------------
+# Module signing / GKI
+# ---------------------------------------------------------------------------
+# GKI modules are signed with a per-vendor key; dev builds use test keys.
+MODULE_SIG_ALL=y
+MODULE_SIG_KEY=certs/signing_key.pem
+MODULE_SIG_HASH=sha256
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
+OUT_DIR=out
+DIST_DIR=dist
+COMMON_OUT_DIR=out
+
+# Copy these artifacts to DIST_DIR after a successful build
+DIST_FILES="
+Image
+System.map
+vmlinux.symvers
+modules.builtin
+modules.builtin.modinfo
+abi_gki_aarch64*
+"

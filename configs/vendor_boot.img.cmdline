@@ -1,0 +1,56 @@
+# configs/vendor_boot.img.cmdline
+# Kernel command line for marble (passed by bootloader/vendor_boot.img)
+#
+# Aurora-Kernel reads these at boot; AnyKernel3 injects them into boot.img.
+# These are the *additional* cmdline args Aurora appends — the bootloader
+# supplies the rest (androidboot.* etc).
+
+# --- Android boot essentials ---
+console=ttyMSM0,115200n8
+androidboot.hardware=qcom
+androidboot.console=ttyMSM0
+androidboot.memcg=1
+androidboot.memfract=1
+androidboot.boot_devices=soc/1d84000.ufshc
+
+# --- Vmalloc / IOMMU ---
+vmalloc=300M
+cma=320M
+
+# --- Performance / latency ---
+loop.max_loop=16
+kpti=off
+ssbd=force-on
+bootconfig
+printk.devkmsg=on
+firmware_class.path=/vendor/firmware
+
+# --- zRAM hint (runtime-driven) ---
+swap_factor=100
+
+# --- Disable kernel auditing (saves CPU) ---
+audit=0
+
+# --- Disable some verbose subsystems ---
+msm_dmaheaps=1
+msm_rtb.filter=0x3F
+msm_watchdog_v2.enable=1
+msm_watchdog_v2.pet_style=1
+
+# --- SELinux ---
+androidboot.selinux=enforcing
+security=selinux
+
+# --- Loglevel ---
+loglevel=6
+
+# --- fs_mgr / fstab flags ---
+androidboot.fstab_suffix=default
+androidboot.partitionbau=production
+
+# --- DDR ---
+ddr_table_enable=1
+msm_ddr_ecc_allow_disabling=0
+
+# --- IPC / SMD ---
+msmdrm.enable=1

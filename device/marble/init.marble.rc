@@ -1,0 +1,62 @@
+# device/marble/init.marble.rc
+#
+# First-stage + second-stage init for the marble device.
+# Handles vendor module loading (from vendor_dlkm), applying Aurora
+# tuning, and setting up the runtime profiles.
+
+on early-init
+    # Load GKI + vendor kernel modules BEFORE mounting data
+    exec u:r:fsck:s0 -- /system/bin/sh -c "insmod /vendor_dlkm/lib/modules/qcom_q6v5.ko 2>/dev/null"
+    exec u:r:fsck:s0 -- /system/bin/sh -c "for m in /vendor_dlkm/lib/modules/*.ko; do insmod \"\$m\" 2>/dev/null; done"
+
+    # Set up Aurora schedtune cgroups
+    mkdir /dev/stune/top-app     0755 system system
+    mkdir /dev/stune/foreground  0755 system system
+    mkdir /dev/stune/background  0755 system system
+    mkdir /dev/stune/foreground/default 0755 system system
+
+on init
+    # Apply the Aurora sysctl + cpu + io tuning
+    exec u:r:fsck:s0 -- /system/bin/sh /sbin/aurora-tune.sh balanced
+
+on fs
+    # wait for UFS vendor partitions
+    wait /dev/block/by-name/vendor${slotselect}
+    wait /dev/block/by-name/vendor_dlkm${slotselect}
+
+    mount ext4 /dev/block/by-name/vendor_dlkm${slotselect} /vendor_dlkm ro barrier=1 discard
+
+    # reload modules from the mounted partition (more reliable than init_boot)
+    exec u:r:fsck:s0 -- /system/bin/sh -c "\
+        for m in /vendor_dlkm/lib/modules/*.ko; do \
+            insmod \"\$m\" 2>/dev/null; \
+        done"
+
+on boot
+    # Start the Aurora profile daemon
+    start aurora-profile
+
+    # Restore default tuning on boot
+    setprop persist.aurora.profile balanced
+
+# ---------------------------------------------------------------------------
+# Aurora services
+# ---------------------------------------------------------------------------
+service aurora-profile /system/bin/sh /sbin/aurora-tune.sh "${persist.aurora.profile:-balanced}"
+    class main
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:su:s0
+
+# React to profile changes
+on property:persist.aurora.profile=*
+    stop aurora-profile
+    start aurora-profile
+
+# React to thermal state (read from thermal-class sysfs)
+on property:sys.thermal.level=2
+    setprop persist.aurora.profile balanced
+on property:sys.thermal.level=3
+    setprop persist.aurora.profile battery

@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * sm7475-marble.dtsi
+ *
+ * Device tree include for Xiaomi marble (POCO F5 / Redmi Note 12 Turbo)
+ * SoC: Qualcomm Snapdragon 7+ Gen 2 (SM7475)
+ *
+ * This file is layered on top of the ACK sm7475 SoC DTSI and adds the
+ * marble-specific board wiring: regulators, panel, touchscreen, haptics,
+ * battery, fuel gauge, and the cluster topology used by the Aurora-Kernel
+ * EAS scheduler.
+ *
+ * Aurora-Kernel  ::  ACK 6.18 LTS
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/regulator/qcom,rpmh-rpmh.h>
+#include <dt-bindings/clock/qcom,gcc-sm7475.h>
+#include <dt-bindings/clock/qcom,rpmh.h>
+#include <dt-bindings/pinctrl/qcom,sm7475-pinctrl.h>
+
+#include "sm7475.dtsi"     // ACK SoC top-level
+#include "sm7475-pinctrl.dtsi"
+
+/ {
+    model = "Xiaomi marble (POCO F5 / Redmi Note 12 Turbo)";
+    compatible = "xiaoli,marble", "qcom,sm7475";
+    qcom,msm-id = <532 0x10000>;
+    qcom,board-id = <0x2B 0x10>;
+
+    aliases {
+        serial0 = &uart2;
+        mmc0 = &sdhc_2;          // microSD
+        mmc1 = &ufshc_mem;      // UFS
+        display0 = &mdss0;
+        touchscreen0 = &ts_i2c;
+    };
+
+    chosen {
+        bootargs = "console=ttyMSM0,115200n8 earlycon";
+        stdout-path = "serial0:115200n8";
+    };
+
+    /*
+     * Reserved memory regions for marble.
+     * Carveouts required by ADSP / CDSP / SLPI / modem firmware loading.
+     */
+    reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        hyp_mem: memory@80000000 {
+            reg = <0x0 0x80000000 0x0 0x600000>;
+            no-map;
+        };
+
+        xbl_mem: memory@80600000 {
+            reg = <0x0 0x80600000 0x0 0x200000>;
+            no-map;
+        };
+
+        cpucpfw_mem: memory@80800000 {
+            reg = <0x0 0x80800000 0x0 0x100000>;
+            no-map;
+        };
+
+        reserved_ipc_mem: memory@80900000 {
+            reg = <0x0 0x80900000 0x0 0x200000>;
+            no-map;
+        };
+
+        cdsp_mem: memory@82300000 {
+            reg = <0x0 0x82300000 0x0 0x2000000>;
+            no-map;
+        };
+
+        adsp_mem: memory@8a400000 {
+            reg = <0x0 0x8a400000 0x0 0x2300000>;
+            no-map;
+        };
+
+        slpi_mem: memory@8c700000 {
+            reg = <0x0 0x8c700000 0x0 0x1d00000>;
+            no-map;
+        };
+
+        mpss_mem: memory@8b000000 {
+            reg = <0x0 0x8b000000 0x0 0xf600000>;
+            no-map;
+        };
+
+        mba_mem: memory@9c700000 {
+            reg = <0x0 0x9c700000 0x0 0x200000>;
+            no-map;
+        };
+
+        venus_mem: memory@9ad00000 {
+            reg = <0x0 0x9ad00000 0x0 0x2000000>;
+            no-map;
+        };
+
+        wlan_msa_mem: memory@9d100000 {
+            reg = <0x0 0x9d100000 0x0 0x1000000>;
+            no-map;
+        };
+
+        ipa_fw_mem: memory@9e200000 {
+            reg = <0x0 0x9e200000 0x0 0x10000>;
+            no-map;
+        };
+
+        pil_heap: memory@ab000000 {
+            reg = <0x0 0xab000000 0x0 0x100000>;
+            no-map;
+        };
+
+        ramoops: ramoops@ac000000 {
+            compatible = "ramoops";
+            reg = <0x0 0xac000000 0x0 0x100000>;
+            record-size = <0x10000>;
+            console-size = <0x20000>;
+            ftrace-size = <0x0>;
+            pmsg-size = <0x20000>;
+            ecc-size = <0x10>;
+        };
+    };
+};

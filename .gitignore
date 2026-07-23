@@ -1,0 +1,42 @@
+# Aurora-Kernel for marble
+# Android kernel build artifacts
+/out/
+/dist/
+/kernel-src/
+/vendor-msm/
+/AnyKernel3/
+/KernelSU-Next/
+/toolchains/
+/tools/
+/ramdisks/generic_ramdisk/
+/ramdisks/vendor_ramdisk/lib/modules/
+/.vendor_cfg_path
+*.img
+*.ko
+*.cmd
+*.o
+*.a
+*.mod
+*.mod.c
+*.order
+*.symvers
+*.builtin
+.tmp_*
+*.dtb
+*.dtbo
+Module.symvers
+modules.builtin
+modules.order
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*~
+
+# Secrets / local
+.env
+*.keystore
+tools/avb/aurora_test_key.pem
+tools/avb/aurora_test_cert.x509.pem

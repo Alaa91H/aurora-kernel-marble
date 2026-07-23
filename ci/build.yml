@@ -1,0 +1,24 @@
+# ci/build.yml
+#
+# Standalone CI definition (mirror of .github/workflows/build.yml).
+# Kept here for reference / local act runners.
+
+name: Aurora-Kernel CI
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./setup.sh
+      - run: ./scripts/toolchain.sh
+      - run: ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aurora-kernel-marble
+          path: aurora-kernel-marble-*.zip

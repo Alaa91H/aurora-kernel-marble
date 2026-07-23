@@ -1,0 +1,9 @@
+# patches/series
+#
+# Patch queue applied (in order) by scripts/patch-apply.sh.
+# Each line is a path relative to patches/. Comments start with '#'.
+# Drop git-format-patch files here and list them.
+#
+# Example:
+#   0001-marble-add-board-dts.patch
+#   0002-aurora-sched-tune.patch

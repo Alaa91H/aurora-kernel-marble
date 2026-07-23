@@ -1,0 +1,157 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * marble-peripherals.dtsi
+ *
+ * Peripheral enablement for the marble board:
+ *   - Display panel (AMOLED, Tianma/CSOT)
+ *   - Touchscreen (Focaltech FT8006)
+ *   - Haptics (Qcom PMI632 linear resonant actuator)
+ *   - Fuel gauge + charger (BQ27556 / SMB1390)
+ *   - LED indicators
+ *   - Audio codec (WCD9375)
+ *
+ * Aurora-Kernel  ::  ACK 6.18 LTS
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/qcom,sm7475-pinctrl.h>
+
+&qupv3_se12_i2c {
+    status = "okay";
+
+    /* ---- Touchscreen: Focaltech FT8006 ---- */
+    ts_i2c: focaltech@38 {
+        compatible = "focaltech,fts-ts";
+        reg = <0x38>;
+        interrupt-parent = <&tlmm>;
+        interrupts = <80 IRQ_TYPE_LEVEL_LOW>;
+        vdd-supply = <&vreg_l11b>;
+        vcc-i2c-supply = <&vreg_l6b>;
+        pinctrl-0 = <&ts_int &ts_reset>;
+        pinctrl-names = "default";
+        focaltech,reset-gpio = <&tlmm 81 GPIO_ACTIVE_LOW>;
+        focaltech,irq-gpio = <&tlmm 80 GPIO_ACTIVE_LOW>;
+        focaltech,max-touch-number = <10>;
+    };
+
+    /* ---- Fuel gauge: BQ27556 ---- */
+    fg_bq27556: bq27556@55 {
+        compatible = "ti,bq27556";
+        reg = <0x55>;
+        interrupt-parent = <&tlmm>;
+        interrupts = <184 IRQ_TYPE_EDGE_FALLING>;
+    };
+};
+
+&mdss0 {
+    status = "okay";
+};
+
+&mdss0_dsi0 {
+    status = "okay";
+    vdda-1p2-supply = <&vreg_l1c>;
+    vccio-0p9-supply = <&vreg_l6b>;
+
+    panel@0 {
+        compatible = "xiaomi,marble-amoled-tianma";
+        reg = <0>;
+        vddi0-supply = <&vreg_l6b>;
+        vci-supply = <&vreg_l7b>;
+        reset-gpios = <&tlmm 75 GPIO_ACTIVE_LOW>;
+        port { panel_in: endpoint { remote-endpoint = <&dsi0_out>; }; };
+    };
+};
+
+&mdss0_dsi0_phy {
+    status = "okay";
+};
+
+&mdss0_dsi0_out {
+    remote-endpoint = <&panel_in>;
+    data-lanes = <0 1 2 3>;
+};
+
+/* ---- Haptics: PMI632 LRA ---- */
+&pmi632_haptics {
+    status = "okay";
+    qcom,wave-shape = "sine";
+    qcom,play-mode = "buffer";
+    qcom,lra-resonance-sigqd = "0x7d";
+    qcom,lra-auto-resonant = <1>;
+};
+
+/* ---- Charger: SMB1390 ---- */
+&pmi632_charger {
+    status = "okay";
+    qcom,dc-status-pin-gpio = <&pmi632_gpios 4 GPIO_ACTIVE_HIGH>;
+};
+
+/* ---- LED: PMI632 flash LED ---- */
+&pmi632_flash_led {
+    status = "okay";
+};
+
+/* ---- Audio: WCD9375 ---- */
+&wcd9375 {
+    status = "okay";
+    qcom,rx-device = <&wcd9375_rx>;
+    qcom,tx-device = <&&wcd9375_tx>;
+};
+
+&swr0 { status = "okay"; };
+&swr1 { status = "okay"; };
+
+/* ---- WLAN: WCN7850 (ath11k over PCIE0) ---- */
+&pcie0 {
+    status = "okay";
+    perst-gpio = <&tlmm 94 GPIO_ACTIVE_LOW>;
+    wake-gpio = <&tlmm 95 GPIO_ACTIVE_HIGH>;
+
+    #address-cells = <1>;
+    #size-cells = <1>;
+    ranges;
+
+    pcie0_port: pcie@0 {
+        reg = <0x0 0x0 0x0 0x0 0x0>;
+        #address-cells = <3>;
+        #size-cells = <2>;
+
+        wifi@1 {
+            compatible = "pci17cb,1107";
+            reg = <0x10000 0x0 0x0 0x0 0x0>;
+            qcom,ath11k-calibration-data;
+        };
+    };
+};
+
+/* ---- Bluetooth: QCA6490 over UART --- */
+&qupv3_se7_uart {
+    status = "okay";
+    bluetooth: bluetooth {
+        compatible = "qcom,qca6490-bt";
+        enable-gpios = <&pmi632_gpios 8 GPIO_ACTIVE_HIGH>;
+        clocks = <&rpmhcc RPMH_RF_CLK1>;
+        vddio-supply = <&vreg_l6b>;
+        vddaon-supply = <&vreg_l8c>;
+        vddrf-supply = <&vreg_l1c>;
+        vddch0-supply = <&vreg_l7b>;
+    };
+};
+
+/* ---- PINCTRL: marble-specific configs ---- */
+&tlmm {
+    ts_int: ts-int {
+        pins = "gpio80";
+        function = "gpio";
+        drive-strength = <8>;
+        bias-pull-up;
+        input-enable;
+    };
+    ts_reset: ts-reset {
+        pins = "gpio81";
+        function = "gpio";
+        drive-strength = <8>;
+        bias-disable;
+    };
+};

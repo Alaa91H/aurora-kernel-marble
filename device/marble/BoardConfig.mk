@@ -1,0 +1,72 @@
+# device/marble/BoardConfig.mk
+#
+# Device BoardConfig for marble (POCO F5 / SM7475).
+# Consumed by an Android tree build; documented here so the kernel build
+# matches what the device's bootloader expects.
+
+# Architecture
+TARGET_ARCH := arm64
+TARGET_ARCH_VARIANT := armv8-2a
+TARGET_CPU_ABI := arm64-v8a
+TARGET_CPU_ABI2 :=
+TARGET_CPU_VARIANT := cortex-a715
+TARGET_CPU_SMP := true
+
+# Bootloader / partition layout
+TARGET_BOOTLOADER_BOARD_NAME := marble
+TARGET_NO_BOOTLOADER := true
+TARGET_NO_RADIOIMAGE := true
+
+# Boot image header (Android 13+ GKI v4)
+BOARD_BOOT_HEADER_VERSION := 4
+BOARD_KERNEL_IMAGE_NAME := Image
+BOARD_INCLUDE_DTB_IN_BOOT_IMG := true
+BOARD_RAMDISK_USE_LZ4 := true
+
+# Split boot layout (GKI)
+BOARD_BUILD_BOOTIMAGE_FROM_KERNEL_IMAGE := true
+BOARD_MOVE_INIT_TO_VENDOR_BOOT := true
+BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR := true
+
+# init_boot partition (ramdisk only)
+BOARD_BUILD_INIT_BOOT_IMAGE := true
+BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 8388608
+
+# vendor_boot
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_VENDOR_KERNEL_MODULES_BLOCK := vendor_dlkm
+
+# vendor_dlkm partition (loadable modules)
+BOARD_VENDOR_DLKMIMAGE_PARTITION_SIZE := 134217728
+BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
+
+# Kernel cmdline (must match configs/vendor_boot.img.cmdline)
+BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom androidboot.memcg=1
+
+# DTBO
+BOARD_INCLUDE_RECOVERY_DTBO := true
+BOARD_DTBOIMG_PARTITION_SIZE := 25165824
+
+# Page size
+BOARD_KERNEL_PAGESIZE := 4096
+BOARD_KERNEL_BASE := 0x00000000
+BOARD_KERNEL_OFFSET := 0x00008000
+BOARD_KERNEL_TAGS_OFFSET := 0x00000100
+BOARD_RAMDISK_OFFSET := 0x01000000
+BOARD_SECOND_OFFSET := 0x00f00000
+
+# Filesystems
+BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+TARGET_USERIMAGES_USE_F2FS := true
+TARGET_USERIMAGES_USE_EXT4 := true
+
+# Encryption
+BOARD_USES_METADATA_PARTITION := true
+BOARD_USES_QCOM_FBE_DECRYPTION := true
+
+# AVB
+BOARD_AVB_ENABLE := true
+BOARD_AVB_MAKE_VBMETA_IMAGE := true
+BOARD_AVB_ROLLBACK_INDEX := 0

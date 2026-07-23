@@ -1,0 +1,79 @@
+# rootfs/init.aurora.rc
+#
+# Android init script — copied into AnyKernel3 ramdisk overlay.
+# Applied at first boot by the vendor init to apply Aurora runtime tuning.
+#
+# This runs AFTER the kernel boots but before zygote; safe to write sysfs.
+
+on early-init
+    # set scheduling + cpufreq defaults early
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor schedutil
+
+on init
+    # mount debugfs + configfs for KSU + BPF
+    mount debugfs debugfs /sys/kernel/debug
+    mkdir /dev/stune 0755
+    chown system system /dev/stune
+    chmod 0664 /dev/stune/schedtune.prefer_idle
+    write /dev/stune/schedtune.prefer_idle 1
+
+on boot
+    # apply sysctl tuning
+    exec u:r:fsck:s0 -- /system/bin/sh /sbin/aurora-tune.sh
+
+    # IO scheduler: maple (flash-friendly) on UFS
+    write /sys/block/sda/queue/scheduler maple
+    write /sys/block/sda/queue/iosched/_slice_idle 0
+    write /sys/block/sda/queue/iosched/low_latency 1
+
+    # zRAM: 4GB zstd-backed block
+    write /sys/block/zram0/disksize 4294967296
+    write /sys/block/zram0/comp_algorithm zstd
+    write /sys/block/zram0/max_comp_streams 8
+    write /sys/block/zram0/writeback_limit_enable 1
+    write /sys/block/zram0/writeback_limit 268435456
+    write /proc/swaps  # trigger
+
+    # KSM + khugepaged
+    write /sys/kernel/mm/ksm/run 1
+    write /sys/kernel/mm/ksm/pages_to_scan 1000
+    write /sys/kernel/mm/ksm/sleep_millisecs 50
+    write /sys/kernel/mm/transparent_hugepage/khugepaged/defrag 1
+
+    # disable watchdogs on benchmark mode (re-enable via prop)
+    write /proc/sys/kernel/watchdog 0
+    write /proc/sys/kernel/nmi_watchdog 0
+
+    # PS1 / entropy
+    write /proc/sys/kernel/random/write_wakeup_threshold 256
+    write /proc/sys/kernel/random/read_wakeup_threshold 1024
+
+    # CPU idle governor: TEO (better for bursty mobile)
+    write /sys/devices/system/cpu/cpuidle/current_governor teo
+
+    # uclamp: clamp background, boost foreground
+    write /proc/sys/kernel/sched_util_clamp_min 0
+    write /proc/sys/kernel/sched_util_clamp_max 1024
+
+    # wake lock management
+    write /sys/power/wake_lock aurora-boot
+
+on property:persist.aurora.profile=performance
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2918400000
+    write /sys/block/sda/queue/iosched/low_latency 1
+
+on property:persist.aurora.profile=battery
+    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2092800000
+    write /sys/block/sda/queue/iosched/low_latency 0
+    write /sys/block/zram0/disksize 2147483648
+
+on property:persist.aurora.profile=balanced
+    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2496000000

@@ -1,0 +1,13 @@
+# device/marble/manifest.xml
+#
+# VINTF (Vendor Interface) manifest declaring the kernel version, SELinux
+# version, and the VNDK the marble device exposes. The framework enforces
+# this matches the kernel that was actually booted.
+
+<manifest version="1.0" type="device">
+    <kernel target-level="6"/>
+    <kernel version="6.18.*"/>
+    <sepolicy>
+        <version>30.0</version>
+    </sepolicy>
+</manifest>

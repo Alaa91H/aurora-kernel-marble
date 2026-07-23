@@ -1,0 +1,33 @@
+# device/marble/fstab.marble
+#
+# Filesystem table for marble.
+# Mounted by first-stage init from the vendor_boot ramdisk.
+# UFS = /dev/block/by-name/userdata, /dev/block/by-name/vendor, etc.
+
+# /system must be at / in first-stage init (mount via dm-verity)
+/system            /system            ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+/vendor            /vendor            ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+/vendor_dlkm      /vendor_dlkm       ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+/system_dlkm      /system_dlkm       ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+/odm               /odm               ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+
+# Persistent partitions
+/product           /product           ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+/system_ext       /system_ext        ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+
+# Data (encrypted via fscrypt v2 inline crypto)
+/data              /data              f2fs    noatime,discard,reserve_root=32768,resgid=1065,inlinecrypt,fsync_mode=noflush_checkpoint wait,check,formattable,late,encrypted,quota,reservedsize=128M,checkpoint=fs
+/cache             /cache             ext4    noatime,nosuid,nodev,noauto_da_alloc,discard    wait,check,formattable
+
+# Metadata (for FBE key)
+/metadata          /metadata          ext4    noatime,nosuid,nodev,noauto_da_alloc,discard    wait,check,formattable,first_stage_mount
+
+# Persistent (persist partition for system properties)
+/persist           /persist           ext4    noatime,nosuid,nodev,noauto_da_alloc,discard    wait,check,first_stage_mount
+
+# RAM disks
+/tmp               /tmp               tmpfs   nosuid,nodev,noexec                             defaults
+
+# Misc
+/misc              /misc              emmc    defaults                                        defaults
+/frp               /persistent        emmc    defaults                                        defaults

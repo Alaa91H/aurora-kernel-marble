@@ -1,0 +1,50 @@
+# Force LF line endings for all text files.
+# Critical: shell scripts MUST be LF or they fail with
+# "bad interpreter: /bin/bash^M" on Linux.
+
+* text=auto eol=lf
+
+# Shell scripts — always LF
+*.sh       text eol=lf
+*.bash     text eol=lf
+
+# Build configs / fragments
+*.config   text eol=lf
+*.conf     text eol=lf
+*.cmdline  text eol=lf
+build.config.* text eol=lf
+
+# Device tree
+*.dts      text eol=lf
+*.dtsi     text eol=lf
+
+# Android init / rc
+*.rc       text eol=lf
+*.xml      text eol=lf
+*.mk       text eol=lf
+*.fstab    text eol=lf
+
+# Kernel defconfig
+*_defconfig text eol=lf
+
+# Lists / series
+series     text eol=lf
+abi_gki_*  text eol=lf
+modules.*  text eol=lf
+
+# Docs
+*.md       text eol=lf
+LICENSE    text eol=lf
+
+# CI
+*.yml      text eol=lf
+*.yaml     text eol=lf
+
+# Makefile
+Makefile   text eol=lf
+
+# Binary — never normalize
+*.img      binary
+*.ko       binary
+*.dtb      binary
+*.pem      binary

@@ -1,0 +1,38 @@
+# rootfs/99-aurora-thermald.rc
+#
+# Soft thermal management via init.rc triggers.
+# Does NOT override the kernel thermal framework — just reacts to profiles.
+
+service aurora-profile /system/bin/sh /sbin/aurora-tune.sh balanced
+    class main
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:su:s0
+
+on property:persist.aurora.profile=performance
+    stop aurora-profile
+    start aurora-profile
+
+on property:persist.aurora.profile=battery
+    stop aurora-profile
+    start aurora-profile
+
+on property:persist.aurora.profile=balanced
+    stop aurora-profile
+    start aurora-profile
+
+# Auto-switch to battery when screen off + low charge
+on property:sys.boot_completed
+    setprop persist.aurora.profile balanced
+
+on property:sys.user.switch_complete
+    setprop persist.aurora.profile balanced
+
+# Thermal throttling escalation (read from thermal-zone)
+on property:sys.thermal.level=2
+    setprop persist.aurora.profile balanced
+
+on property:sys.thermal.level=3
+    setprop persist.aurora.profile battery

@@ -1,0 +1,164 @@
+name: Build Aurora-Kernel
+
+on:
+  push:
+    branches: [ main, master ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      ksu:
+        description: 'Build with KernelSU'
+        required: false
+        default: '1'
+        type: choice
+        options: ['1', '0']
+      stage:
+        description: 'Build stage'
+        required: false
+        default: 'full'
+        type: choice
+        options: ['full', 'gki', 'pack']
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout Aurora-Kernel repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Free disk space
+        run: |
+          echo "Freeing disk space..."
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          sudo apt-get clean
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            bc bison build-essential ccache cpio curl flex git \
+            libelf-dev libncurses-dev libssl-dev lld llvm python3 \
+            zip zlib1g-dev \
+            e2fsprogs e2fsprogs-tools \
+            cpio device-tree-compiler \
+            openssl
+
+      - name: Install Google repo tool (for ACK manifest)
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
+          chmod a+x /usr/local/bin/repo
+
+      - name: Configure git for repo tool
+        run: |
+          git config --global user.email "ci@aurora-kernel.local"
+          git config --global user.name "Aurora CI"
+
+      - name: Fetch ACK 6.18 LTS + KSU + AnyKernel3
+        run: ./setup.sh
+
+      - name: Fetch vendor tree (Qualcomm marble)
+        run: ./scripts/vendor-fetch.sh
+        continue-on-error: true
+
+      - name: Bootstrap Proton-Clang toolchain
+        run: ./scripts/toolchain.sh
+
+      - name: Apply patch queue
+        run: ./scripts/patch-apply.sh || true
+
+      - name: Build (full GKI + vendor + pack pipeline)
+        run: |
+          chmod +x build.sh
+          KSU="${{ github.event.inputs.ksu || '1' }}" \
+          ./build.sh "${{ github.event.inputs.stage || 'full' }}"
+
+      - name: Gather artifacts
+        id: artifact
+        run: |
+          set -e
+          ZIP=$(ls -1 aurora-kernel-marble-*.zip 2>/dev/null | head -1 || true)
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Upload AnyKernel3 flashable zip
+        if: steps.artifact.outputs.zip != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.zip }}
+          path: ${{ steps.artifact.outputs.zip }}
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload boot.img
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-img
+          path: dist/boot.img
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload vendor_boot.img
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor-boot-img
+          path: dist/vendor_boot.img
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload init_boot.img
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: init-boot-img
+          path: dist/init_boot.img
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload vendor_dlkm.img
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor-dlkm-img
+          path: dist/vendor_dlkm.img
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload dtbo.img
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dtbo-img
+          path: dist/dtbo.img
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload vmlinux.symvers (for external module builds)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vmlinux-symvers
+          path: dist/vmlinux.symvers
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload abi report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: abi-report
+          path: |
+            dist/abi.removed
+            dist/abi.added
+            dist/abi_gki_aarch64.extracted
+          retention-days: 7
+          if-no-files-found: ignore
