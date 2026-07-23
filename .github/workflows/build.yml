@@ -62,7 +62,7 @@ jobs:
           git config --global user.name "Aurora CI"
 
       - name: Fetch ACK 6.18 LTS + KSU + AnyKernel3
-        run: ./setup.sh
+        run: bash setup.sh
 
       - name: Fetch vendor tree (Qualcomm marble)
         run: ./scripts/vendor-fetch.sh
