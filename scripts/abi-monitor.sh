@@ -52,11 +52,18 @@ fi
 
 # ---------------------------------------------------------------------------
 # 3. Diff: removed (regression!) vs added (new)
+#    comm requires BOTH inputs sorted; re-sort to be safe.
 # ---------------------------------------------------------------------------
 REMOVED="$DIST_DIR/abi.removed"
 ADDED="$DIST_DIR/abi.added"
-comm -23 "$RECORDED_LIST" "$EXTRACTED" > "$REMOVED"
-comm -13 "$RECORDED_LIST" "$EXTRACTED" > "$ADDED"
+# sort both inputs into temp files so comm doesn't fail on ordering
+SORTED_RECORDED=$(mktemp)
+SORTED_EXTRACTED=$(mktemp)
+sort -u "$RECORDED_LIST" > "$SORTED_RECORDED"
+sort -u "$EXTRACTED" > "$SORTED_EXTRACTED"
+comm -23 "$SORTED_RECORDED" "$SORTED_EXTRACTED" > "$REMOVED"
+comm -13 "$SORTED_RECORDED" "$SORTED_EXTRACTED" > "$ADDED"
+rm -f "$SORTED_RECORDED" "$SORTED_EXTRACTED"
 
 N_REMOVED=$(wc -l < "$REMOVED")
 N_ADDED=$(wc -l < "$ADDED")
