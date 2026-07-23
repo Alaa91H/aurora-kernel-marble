@@ -24,7 +24,8 @@ KERNEL_DIR="common-android17-6.18"
 # KernelSU-Next (kprobe-based, GKI-friendly)
 KSU_REPO="https://github.com/Kernelsu-Next/KernelSU-Next.git"
 KSU_DIR="KernelSU-Next"
-KSU_BRANCH="main"
+# Default branch is 'dev' (no 'main'/'master'); clone HEAD to track default.
+KSU_BRANCH="${KSU_BRANCH:-dev}"
 
 # AnyKernel3 flasher
 ANYKERNEL_REPO="https://github.com/osm0sis/AnyKernel3.git"
@@ -81,16 +82,19 @@ ln -sfn "$KERNEL_DIR" kernel-src || true
 ok "kernel source ready at ${KERNEL_DIR} (ACK 6.18 LTS)"
 
 # ---------------------------------------------------------------------------
-# 2. KernelSU-Next
+# 2. KernelSU-Next (optional — build continues without it if clone fails)
 # ---------------------------------------------------------------------------
 if [[ -d "$KSU_DIR/.git" ]]; then
   log "KernelSU-Next already present, pulling latest"
-  git -C "$KSU_DIR" pull --ff-only
+  git -C "$KSU_DIR" pull --ff-only || log "KSU pull failed, keeping existing"
 else
   log "cloning KernelSU-Next (${KSU_BRANCH})"
-  git clone --depth=1 -b "$KSU_BRANCH" "$KSU_REPO" "$KSU_DIR"
+  if ! git clone --depth=1 -b "$KSU_BRANCH" "$KSU_REPO" "$KSU_DIR"; then
+    log "warning: KernelSU-Next clone failed; continuing WITHOUT root support"
+    log "         (build will succeed; set KSU=0 or fix network and re-run)"
+  fi
 fi
-ok "KernelSU-Next ready"
+[[ -d "$KSU_DIR/.git" ]] && ok "KernelSU-Next ready" || log "KernelSU-Next: skipped"
 
 # ---------------------------------------------------------------------------
 # 3. Integrate KernelSU into kernel tree
@@ -103,7 +107,7 @@ if [[ -d "$KSU_BIN" ]]; then
   cp -a "$KSU_BIN" "$KSU_DST"
   ok "KernelSU driver copied to drivers/kernelsu"
 else
-  err "KernelSU-Next/kernel not found; integration skipped"
+  log "KernelSU-Next/kernel not found; integration skipped (root disabled)"
 fi
 
 # ---------------------------------------------------------------------------
