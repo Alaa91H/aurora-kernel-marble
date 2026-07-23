@@ -77,8 +77,21 @@ else
   fi
 fi
 
-# normalize to a stable dir name for build.sh
-ln -sfn "$KERNEL_DIR" kernel-src || true
+# normalize to a stable path for build.sh.
+# The ACK `repo` manifest places the kernel source under `<dir>/common/`
+# (project path="common" name="kernel/common"). When repo is used, the
+# real source tree is one level deeper than the manifest dir. When the
+# git-clone fallback is used, the source IS the clone dir.
+if [[ -d "$KERNEL_DIR/common/Makefile" ]] || [[ -d "$KERNEL_DIR/common/Kbuild" ]]; then
+  ln -sfn "$KERNEL_DIR/common" kernel-src || true
+  log "kernel source at $KERNEL_DIR/common/ (repo manifest layout)"
+elif [[ -d "$KERNEL_DIR/Makefile" ]] || [[ -d "$KERNEL_DIR/Kbuild" ]]; then
+  ln -sfn "$KERNEL_DIR" kernel-src || true
+  log "kernel source at $KERNEL_DIR/ (direct clone layout)"
+else
+  ln -sfn "$KERNEL_DIR" kernel-src || true
+  log "WARNING: could not locate Makefile/Kbuild under $KERNEL_DIR; symlink may be wrong"
+fi
 ok "kernel source ready at ${KERNEL_DIR} (ACK 6.18 LTS)"
 
 # ---------------------------------------------------------------------------

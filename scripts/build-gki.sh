@@ -78,17 +78,40 @@ log "merging defconfig + fragments"
 bash scripts/config-merge.sh
 
 # ---------------------------------------------------------------------------
-# 2. olddefconfig to settle symbol dependencies
+# 2. Build — prefer Bazel (kleaf, the official ACK build system) if present,
+#    fall back to raw make. ACK 6.18 ships a tools/bazel linkfile that wraps
+#    the entire GKI build including dist artifacts.
 # ---------------------------------------------------------------------------
-log "olddefconfig"
-make -C "$KERNEL_SRC" O="$OUT_DIR" LLVM=1 olddefconfig
+BAZEL="$ROOT/$KERNEL_SRC/../tools/bazel"
+[[ -x "$BAZEL" ]] || BAZEL=""
+# also check inside the kernel src dir itself
+[[ -x "$KERNEL_SRC/tools/bazel" ]] && BAZEL="$KERNEL_SRC/tools/bazel"
+# or on PATH
+command -v bazel >/dev/null 2>&1 && BAZEL="${BAZEL:-$(command -v bazel)}"
 
-# ---------------------------------------------------------------------------
-# 3. Build the GKI image + modules + dtbs
-# ---------------------------------------------------------------------------
-log "building GKI core (Image, modules, dtbs) — $JOBS jobs"
-make -C "$KERNEL_SRC" O="$OUT_DIR" LLVM=1 -j"$JOBS" \
-  Image modules dtbs 2>&1 | tail -300
+if [[ -n "$BAZEL" ]]; then
+  log "building GKI via Bazel/kleaf (official ACK method): $BAZEL"
+  # kleaf builds the GKI image + modules + dist into out/ and dist/
+  ( cd "$(dirname "$BAZEL")/.." && \
+    "$BAZEL" build //common:kernel_aarch64_dist --lto=thin \
+      --jobs "$JOBS" --//common:defconfig_fragment="$ROOT/configs/marble_defconfig" \
+      2>&1 | tail -400 ) || {
+    log "bazel build failed; falling back to raw make"
+    BAZEL=""
+  }
+fi
+
+if [[ -z "$BAZEL" ]]; then
+  # ---------------------------------------------------------------------------
+  # 2a. Raw make fallback
+  # ---------------------------------------------------------------------------
+  log "olddefconfig (raw make)"
+  make -C "$KERNEL_SRC" O="$OUT_DIR" LLVM=1 CC="$CC" LD="$LD" olddefconfig
+
+  log "building GKI core (Image, modules, dtbs) — $JOBS jobs"
+  make -C "$KERNEL_SRC" O="$OUT_DIR" LLVM=1 CC="$CC" LD="$LD" -j"$JOBS" \
+    Image modules dtbs 2>&1 | tail -300
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Validate artifacts
