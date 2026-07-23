@@ -47,8 +47,7 @@ jobs:
           sudo apt-get install -y \
             bc bison build-essential ccache cpio curl flex git \
             libelf-dev libncurses-dev libssl-dev lld llvm python3 \
-            zip zlib1g-dev \
-            e2fsprogs e2fsprogs-tools \
+            zip zlib1g-dev e2fsprogs \
             cpio device-tree-compiler \
             openssl
 
