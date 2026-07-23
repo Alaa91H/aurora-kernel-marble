@@ -41,12 +41,14 @@ awk '{print $2}' "$SYMVERS" | sort -u > "$EXTRACTED"
 ok "$(wc -l < "$EXTRACTED") symbols exported by GKI build"
 
 # ---------------------------------------------------------------------------
-# 2. Bootstrap a recorded list on first run
+# 2. Bootstrap a recorded list on first run (or if existing file has no
+#    real symbol entries — e.g. only comments)
 # ---------------------------------------------------------------------------
-if [[ ! -f "$RECORDED_LIST" ]]; then
-  warn "no recorded symbol list; bootstrapping from current build"
+RECORDED_COUNT=$(grep -v '^[[:space:]]*#' "$RECORDED_LIST" 2>/dev/null | grep -v '^[[:space:]]*$' | wc -l)
+if [[ ! -f "$RECORDED_LIST" ]] || [[ "$RECORDED_COUNT" -eq 0 ]]; then
+  warn "no recorded symbol list (or empty); bootstrapping from current build"
   cp "$EXTRACTED" "$RECORDED_LIST"
-  ok "created baseline: $RECORDED_LIST"
+  ok "created baseline: $RECORDED_LIST ($(wc -l < "$RECORDED_LIST") symbols)"
   exit 0
 fi
 
@@ -57,9 +59,10 @@ fi
 REMOVED="$DIST_DIR/abi.removed"
 ADDED="$DIST_DIR/abi.added"
 # sort both inputs into temp files so comm doesn't fail on ordering
+# (also strip comments and blank lines from the recorded baseline)
 SORTED_RECORDED=$(mktemp)
 SORTED_EXTRACTED=$(mktemp)
-sort -u "$RECORDED_LIST" > "$SORTED_RECORDED"
+grep -v '^[[:space:]]*#' "$RECORDED_LIST" | grep -v '^[[:space:]]*$' | sort -u > "$SORTED_RECORDED"
 sort -u "$EXTRACTED" > "$SORTED_EXTRACTED"
 comm -23 "$SORTED_RECORDED" "$SORTED_EXTRACTED" > "$REMOVED"
 comm -13 "$SORTED_RECORDED" "$SORTED_EXTRACTED" > "$ADDED"

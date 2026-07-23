@@ -83,7 +83,9 @@ case "$STAGE" in
     [[ -x toolchains/proton-clang/bin/clang ]] || run_stage "toolchain" scripts/toolchain.sh
 
     run_stage "gki"           scripts/build-gki.sh
-    run_stage "abi"           scripts/abi-monitor.sh || log "ABI monitor reported issues (non-fatal in dev)"
+    # ABI monitoring is informational in dev; KMI regressions are expected
+    # while the vendor mainlining patches are being developed.
+    bash scripts/abi-monitor.sh || log "ABI monitor reported issues (non-fatal in dev)"
     run_stage "vendor"        scripts/build-vendor-modules.sh || log "vendor build had issues (GKI-only zip still produced)"
     run_stage "pack"          scripts/pack-bootimg.sh
     ;;
