@@ -120,29 +120,54 @@ fi
 # ---------------------------------------------------------------------------
 # 4. Locate build artifacts — Bazel and make use different output layouts
 # ---------------------------------------------------------------------------
-# Bazel/kleaf dist: <kernel-root>/bazel-bin/common/kernel_aarch64_dist/
-# Raw make:          $OUT_DIR/arch/arm64/boot/Image
+# Bazel/kleaf raw build output: <kernel-root>/bazel-bin/common/kernel_aarch64
+#   contains: Image, vmlinux, Module.symvers, modules.builtin, *.ko
+# Bazel dist target: <kernel-root>/bazel-bin/common/kernel_aarch64_dist/
+#   contains: the dist tarball + install script (packaged artifacts)
+# Raw make: $OUT_DIR/arch/arm64/boot/Image
+BAZEL_OUT="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64"
 BAZEL_DIST="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64_dist"
 
 IMG=""
 SYMVERS=""
 MODULES_BUILTIN=""
 
-if [[ -d "$BAZEL_DIST" ]]; then
+if [[ -d "$BAZEL_OUT" ]]; then
+  log "locating artifacts in Bazel out: $BAZEL_OUT"
+  IMG="$BAZEL_OUT/Image"
+  SYMVERS="$BAZEL_OUT/Module.symvers"
+  MODULES_BUILTIN="$BAZEL_OUT/modules.builtin"
+elif [[ -d "$BAZEL_DIST" ]]; then
   log "locating artifacts in Bazel dist: $BAZEL_DIST"
-  # Bazel dist contains Image, Module.symvers, modules.builtin, etc.
   IMG=$(find "$BAZEL_DIST" -name 'Image' -type f 2>/dev/null | head -1)
   SYMVERS=$(find "$BAZEL_DIST" -name 'Module.symvers' -type f 2>/dev/null | head -1)
   MODULES_BUILTIN=$(find "$BAZEL_DIST" -name 'modules.builtin' -type f 2>/dev/null | head -1)
-  # Bazel may also produce vmlinux.symvers (renamed) or a symvers file
-  [[ -z "$SYMVERS" ]] && SYMVERS=$(find "$BAZEL_DIST" -name 'vmlinux.symvers' -type f 2>/dev/null | head -1)
 elif [[ -d "$OUT_DIR/arch/arm64/boot" ]]; then
   IMG="$OUT_DIR/arch/arm64/boot/Image"
   SYMVERS="$OUT_DIR/Module.symvers"
   MODULES_BUILTIN="$OUT_DIR/modules.builtin"
 fi
 
-[[ -f "$IMG" ]] || { err "GKI Image not found"; ls -la "$BAZEL_DIST" 2>/dev/null | head -30; exit 1; }
+# Bazel may nest artifacts one level deeper (build subdir)
+if [[ -z "$IMG" ]] || [[ ! -f "$IMG" ]]; then
+  IMG=$(find "$KERNEL_ROOT/bazel-bin" -name 'Image' -type f 2>/dev/null | head -1)
+fi
+if [[ -z "$SYMVERS" ]] || [[ ! -f "$SYMVERS" ]]; then
+  SYMVERS=$(find "$KERNEL_ROOT/bazel-bin" -name 'Module.symvers' -type f 2>/dev/null | head -1)
+fi
+if [[ -z "$MODULES_BUILTIN" ]] || [[ ! -f "$MODULES_BUILTIN" ]]; then
+  MODULES_BUILTIN=$(find "$KERNEL_ROOT/bazel-bin" -name 'modules.builtin' -type f 2>/dev/null | head -1)
+fi
+
+if [[ -z "$IMG" ]] || [[ ! -f "$IMG" ]]; then
+  err "GKI Image not found"
+  log "searched:"
+  log "  bazel out : $BAZEL_OUT"
+  log "  bazel dist: $BAZEL_DIST"
+  log "  make out  : $OUT_DIR/arch/arm64/boot"
+  find "$KERNEL_ROOT/bazel-bin" -name 'Image' 2>/dev/null | head -5
+  exit 1
+fi
 ok "GKI Image: $IMG"
 
 if [[ -z "$SYMVERS" ]] || [[ ! -f "$SYMVERS" ]]; then
