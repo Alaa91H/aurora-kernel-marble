@@ -93,16 +93,12 @@ BAZEL=""
 if [[ -n "$BAZEL" ]]; then
   log "building GKI via Bazel/kleaf (official ACK method): $BAZEL"
   # kleaf: build the aarch64 GKI kernel + dist artifacts.
-  # --config=fast = no debug info, faster. --lto=thin = ThinLTO.
-  # Defconfig fragments are applied via --kleaf_ext_fragment.
-  FRAG_ARG=""
-  if [[ -f "$CFG_DIR/marble_defconfig" ]]; then
-    # kleaf accepts fragments as label or path; use path form
-    FRAG_ARG="--kernel_build_ext_defconfig=$CFG_DIR/marble_defconfig"
-  fi
+  # The default //common:kernel_aarch64_dist target uses the ACK
+  # gki_aarch64_defconfig. Custom defconfig fragments are applied via
+  # --kernel_build_defconfig_fragments=<path> once the base build works.
   ( cd "$KERNEL_ROOT" && \
     "$BAZEL" build //common:kernel_aarch64_dist \
-      --config=fast --lto=thin --jobs "$JOBS" $FRAG_ARG \
+      --config=fast --jobs "$JOBS" \
       2>&1 | tail -400 ) || {
     log "bazel build failed; falling back to raw make"
     BAZEL=""

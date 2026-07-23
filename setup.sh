@@ -84,11 +84,11 @@ fi
 # So we expose BOTH:
 #   kernel-src  -> <dir>/common   (the actual Linux source tree, for make)
 #   kernel-root -> <dir>          (the manifest root, for bazel/kleaf)
-if [[ -d "$KERNEL_DIR/common/Makefile" ]] || [[ -d "$KERNEL_DIR/common/Kbuild" ]]; then
+if [[ -f "$KERNEL_DIR/common/Makefile" ]] || [[ -f "$KERNEL_DIR/common/Kbuild" ]]; then
   ln -sfn "$KERNEL_DIR/common" kernel-src || true
   ln -sfn "$KERNEL_DIR" kernel-root || true
   log "kernel source at $KERNEL_DIR/common/ (repo manifest layout)"
-elif [[ -d "$KERNEL_DIR/Makefile" ]] || [[ -d "$KERNEL_DIR/Kbuild" ]]; then
+elif [[ -f "$KERNEL_DIR/Makefile" ]] || [[ -f "$KERNEL_DIR/Kbuild" ]]; then
   ln -sfn "$KERNEL_DIR" kernel-src || true
   ln -sfn "$KERNEL_DIR" kernel-root || true
   log "kernel source at $KERNEL_DIR/ (direct clone layout)"
