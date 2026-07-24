@@ -43,7 +43,7 @@ jobs:
             libelf-dev libncurses-dev libssl-dev lld llvm python3 \
             zip zlib1g-dev e2fsprogs \
             cpio device-tree-compiler \
-            openssl gettext envsubst
+            openssl gettext
           # newer clang than 22.04 default (14) for better 6.18 support
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - 2>/dev/null || true
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main" | sudo tee /etc/apt/sources.list.d/llvm.list

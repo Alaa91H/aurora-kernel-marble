@@ -75,9 +75,14 @@ else
 fi
 
 if [[ -f "$AK_OVERLAY/banner" ]]; then
-  # expand $VERSION and $SHA in the banner
-  VERSION="$VERSION" SHA="$SHA" envsubst < "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
-    cp -f "$AK_OVERLAY/banner" "$AK3_WORK/banner"
+  # expand $VERSION and $SHA in the banner (fallback to sed if envsubst missing)
+  if command -v envsubst >/dev/null 2>&1; then
+    VERSION="$VERSION" SHA="$SHA" envsubst < "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
+      cp -f "$AK_OVERLAY/banner" "$AK3_WORK/banner"
+  else
+    sed "s/\${VERSION}/$VERSION/g; s/\${SHA}/$SHA/g" "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
+      cp -f "$AK_OVERLAY/banner" "$AK3_WORK/banner"
+  fi
   ok "banner applied"
 fi
 
