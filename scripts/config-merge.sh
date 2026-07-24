@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 #
-# scripts/config-merge.sh — merge base defconfig + core fragments + flavors
+# scripts/config-merge.sh — merge base defconfig + vendor + fragments + flavors
 #
 # Hierarchical merge order (each layer builds on the previous):
 #   1. Core:       configs/marble_defconfig
-#   2. Fragments:  configs/fragments/*.config   (always applied)
-#   3. Platform:   configs/flavors/platform/<platform>.config
-#   4. Root:       configs/flavors/root/<root>.config
-#   5. Profile:    configs/flavors/profile/<profile>.config
+#   2. Vendor:     configs/vendor/marble_GKI.config + marble_consolidate.config
+#   3. Fragments:  configs/fragments/*.config   (always applied)
+#   4. Capabilities: configs/capabilities/*.config (always applied)
+#   5. Platform:   configs/flavors/platform/<platform>.config
+#   6. Root:       configs/flavors/root/<root>.config
+#   7. Profile:    configs/flavors/profile/<profile>.config
 #
-# The FLAVOR env var controls layers 3-5: FLAVOR="platform-root-profile"
+# The FLAVOR env var controls layers 5-7: FLAVOR="platform-root-profile"
 # Default: FLAVOR="aosp-noroot-production"
 #
 set -uo pipefail
@@ -19,6 +21,7 @@ cd "$ROOT"
 KERNEL_SRC="${KERNEL_SRC:-$ROOT/kernel-src}"
 OUT_DIR="${OUT_DIR:-$ROOT/out}"
 CFG_DIR="$ROOT/configs"
+VENDOR_DIR="$CFG_DIR/vendor"
 FRAG_DIR="$CFG_DIR/fragments"
 CAP_DIR="$CFG_DIR/capabilities"
 FLAVOR_DIR="$CFG_DIR/flavors"
@@ -57,14 +60,23 @@ cp -f "$CFG_DIR/marble_defconfig" "$OUT_DIR/.config"
 # ---------------------------------------------------------------------------
 MERGE_FILES=()
 
-# 2a. Core fragments (always applied — scheduler, battery, network, etc.)
+# 2a. Vendor configs (marble_GKI.config + marble_consolidate.config)
+# These are the AUTHORITATIVE Xiaomi vendor configs from marble-s-oss.
+if [[ -d "$VENDOR_DIR" ]]; then
+  for f in "$VENDOR_DIR"/*.config; do
+    [[ -f "$f" ]] && MERGE_FILES+=("$f")
+  done
+  log "  + vendor: $(ls "$VENDOR_DIR"/*.config 2>/dev/null | wc -l) files"
+fi
+
+# 2b. Core fragments (always applied — scheduler, battery, network, etc.)
 if [[ -d "$FRAG_DIR" ]]; then
   for f in "$FRAG_DIR"/*.config; do
     [[ -f "$f" ]] && MERGE_FILES+=("$f")
   done
 fi
 
-# 2b. Capabilities layer (always applied — 180+ verified kernel features)
+# 2c. Capabilities layer (always applied — 300+ verified kernel features)
 if [[ -d "$CAP_DIR" ]]; then
   for f in "$CAP_DIR"/*.config; do
     [[ -f "$f" ]] && MERGE_FILES+=("$f")
@@ -72,7 +84,7 @@ if [[ -d "$CAP_DIR" ]]; then
   log "  + capabilities: $(ls "$CAP_DIR"/*.config 2>/dev/null | wc -l) files"
 fi
 
-# 2c. Platform flavor
+# 2d. Platform flavor
 PLATFORM_CFG="$FLAVOR_DIR/platform/${FLAVOR_PLATFORM}.config"
 if [[ -f "$PLATFORM_CFG" ]]; then
   MERGE_FILES+=("$PLATFORM_CFG")
@@ -81,7 +93,7 @@ else
   log "  WARNING: platform config not found: $PLATFORM_CFG"
 fi
 
-# 2d. Root flavor
+# 2e. Root flavor
 ROOT_CFG="$FLAVOR_DIR/root/${FLAVOR_ROOT}.config"
 if [[ -f "$ROOT_CFG" ]]; then
   MERGE_FILES+=("$ROOT_CFG")
@@ -90,7 +102,7 @@ else
   log "  WARNING: root config not found: $ROOT_CFG"
 fi
 
-# 2e. Profile flavor
+# 2f. Profile flavor
 PROFILE_CFG="$FLAVOR_DIR/profile/${FLAVOR_PROFILE}.config"
 if [[ -f "$PROFILE_CFG" ]]; then
   MERGE_FILES+=("$PROFILE_CFG")
