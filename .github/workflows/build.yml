@@ -16,12 +16,6 @@ on:
         default: '1'
         type: choice
         options: ['1', '0']
-      stage:
-        description: 'Build stage'
-        required: false
-        default: 'full'
-        type: choice
-        options: ['full', 'gki', 'pack']
 
 jobs:
   build:
@@ -49,7 +43,7 @@ jobs:
             libelf-dev libncurses-dev libssl-dev lld llvm python3 \
             zip zlib1g-dev e2fsprogs \
             cpio device-tree-compiler \
-            openssl
+            openssl gettext envsubst
           # newer clang than 22.04 default (14) for better 6.18 support
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - 2>/dev/null || true
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main" | sudo tee /etc/apt/sources.list.d/llvm.list
@@ -70,7 +64,7 @@ jobs:
         run: bash setup.sh
 
       - name: Fetch vendor tree (Qualcomm marble)
-        run: ./scripts/vendor-fetch.sh
+        run: bash scripts/vendor-fetch.sh
         continue-on-error: true
 
       - name: Bootstrap toolchain
@@ -83,28 +77,38 @@ jobs:
         run: |
           chmod +x build.sh
           KSU="${{ github.event.inputs.ksu || '1' }}" \
-          bash build.sh "${{ github.event.inputs.stage || 'full' }}"
+          bash build.sh full
 
       - name: Gather artifacts
         id: artifact
         run: |
           set -e
-          ZIP="$(ls -1 aurora-kernel-marble-*.zip 2>/dev/null | head -1 || true)"
+          echo "=== dist/ contents ==="
+          ls -la dist/ 2>/dev/null || true
+          ZIP="$(ls -1 dist/aurora-kernel-marble-*.zip 2>/dev/null | head -1 || true)"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
           echo "Found zip: $ZIP"
-          ls -la dist/ 2>/dev/null || true
 
       - name: Upload AnyKernel3 flashable zip
         if: steps.artifact.outputs.zip != ''
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-kernel-marble-${{ github.run_id }}
+          name: aurora-kernel-marble-flashable
           path: ${{ steps.artifact.outputs.zip }}
           retention-days: 30
           compression-level: 0
           if-no-files-found: error
 
-      - name: Upload GKI Image
+      - name: Upload zip checksum
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-kernel-checksum
+          path: dist/*.sha256
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload GKI Image (raw kernel binary)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -113,34 +117,7 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Upload boot.img
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: boot-img
-          path: dist/boot.img
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Upload init_boot.img
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: init-boot-img
-          path: dist/init_boot.img
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Upload dtbo.img
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dtbo-img
-          path: dist/dtbo.img
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Upload vmlinux.symvers (for external module builds)
+      - name: Upload vmlinux.symvers (KMI contract for module builds)
         if: always()
         uses: actions/upload-artifact@v4
         with:

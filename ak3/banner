@@ -1,0 +1,29 @@
+## Aurora-Kernel 6.18 LTS
+## for Xiaomi marble (POCO F5 / Redmi Note 12 Turbo)
+## SM7475 · Snapdragon 7+ Gen 2
+
+  ___  _____  ____  ____  __   ____  ____
+ / _ \/  _/ |    \|    \|  | /  _ ||    \
+| |_| || ||  o  |  o  |  |/  | | ||  o  )
+|  _/ | ||   _/|  _  |  ||  | |_| ||   _/
+| |  _| ||  |  |  |  |  ||  | U | ||  |
+| | /  / |  |  |  |  |  ||  |___| ||  |
+|_|  \__| |__|  |__|__|__| \______||__|
+
+   Android Common Kernel 6.18 LTS
+   Built: $(date -u 2>/dev/null || echo "CI")
+   Version: ${VERSION:-6.18-ack}
+   Commit: ${SHA:-unknown}
+   Source: https://github.com/Alaa91H/aurora-kernel-marble
+
+   Features:
+   - GKI compliant (Android 17 / ACK 6.18)
+   - KernelSU-Next integration
+   - EAS + schedutil + WALT + UCLAMP
+   - MGLRU + DAMON + zRAM-zSTD
+   - KCFI + KASLR + BTI + MTE
+   - CPU Undervolting (DTS OPP tables)
+   - WCD9375 hi-res audio (24/32-bit, 384kHz)
+   - WireGuard + BBR + io_uring
+
+   Flash via Kernel Flasher / TWRP / OrangeFox

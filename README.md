@@ -131,22 +131,40 @@ Individual stages:
 
 ## Flash
 
-### Option A — Custom recovery (AnyKernel3 zip)
+Aurora-Kernel uses the **AnyKernel3 patch model** (the professional GKI
+standard). The flashable zip contains only the bare `Image` — it patches
+the existing `boot` partition on-device using magiskboot, preserving your
+ROM's ramdisk, Magisk/KernelSU root, cmdline, and AVB flags.
+
+### Method A — Kernel Flasher (recommended)
+```
+Kernel Flasher → select aurora-kernel-marble-*.zip → Flash
+```
+
+### Method B — Custom recovery (TWRP / OrangeFox)
 ```
 TWRP / OrangeFox → Install → aurora-kernel-marble-*.zip
 ```
 
-### Option B — fastboot (GKI split images, recommended)
-```bash
-fastboot flash boot         dist/boot.img
-fastboot flash init_boot    dist/init_boot.img
-fastboot flash vendor_boot  dist/vendor_boot.img
-fastboot flash vendor_dlkm  dist/vendor_dlkm.img
-fastboot flash dtbo         dist/dtbo.img
-fastboot reboot
-```
+### What happens during flash
+1. AK3 verifies device codename (`marble` / `marblein`)
+2. Backs up current boot to `/sdcard/aurora-kernel-backup/`
+3. magiskboot unpacks the existing boot partition
+4. The new `Image` replaces the old kernel
+5. magiskboot repacks (preserving ramdisk, cmdline, OS version, Magisk)
+6. Result is written back to the `boot` partition (active A/B slot)
 
-Outputs land in `dist/` (boot images) and repo root (AnyKernel3 zip).
+Only the `boot` partition is touched. `vendor_boot`, `dtbo`,
+`vendor_dlkm`, and `system_dlkm` remain intact (GKI kernel-only update).
+
+### Outputs
+```
+dist/
+├── aurora-kernel-marble-6.18-ack-<sha>.zip      # flashable zip (primary)
+├── aurora-kernel-marble-6.18-ack-<sha>.sha256   # checksum
+├── Image                                          # raw GKI kernel binary
+└── vmlinux.symvers                                # KMI contract (for module builds)
+```
 
 ---
 
