@@ -89,17 +89,29 @@ jobs:
         id: artifact
         run: |
           set -e
-          ZIP=$(ls -1 aurora-kernel-marble-*.zip 2>/dev/null | head -1 || true)
+          ZIP="$(ls -1 aurora-kernel-marble-*.zip 2>/dev/null | head -1 || true)"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "Found zip: $ZIP"
+          ls -la dist/ 2>/dev/null || true
 
       - name: Upload AnyKernel3 flashable zip
         if: steps.artifact.outputs.zip != ''
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.artifact.outputs.zip }}
+          name: aurora-kernel-marble-${{ github.run_id }}
           path: ${{ steps.artifact.outputs.zip }}
           retention-days: 30
           compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload GKI Image
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gki-image
+          path: dist/Image
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: Upload boot.img
         if: always()
@@ -110,30 +122,12 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload vendor_boot.img
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vendor-boot-img
-          path: dist/vendor_boot.img
-          retention-days: 14
-          if-no-files-found: ignore
-
       - name: Upload init_boot.img
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: init-boot-img
           path: dist/init_boot.img
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Upload vendor_dlkm.img
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vendor-dlkm-img
-          path: dist/vendor_dlkm.img
           retention-days: 14
           if-no-files-found: ignore
 
@@ -153,7 +147,7 @@ jobs:
           name: vmlinux-symvers
           path: dist/vmlinux.symvers
           retention-days: 30
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
       - name: Upload abi report
         if: always()
