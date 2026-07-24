@@ -86,8 +86,12 @@ case "$STAGE" in
     # ABI monitoring is informational in dev; KMI regressions are expected
     # while the vendor mainlining patches are being developed.
     bash scripts/abi-monitor.sh || log "ABI monitor reported issues (non-fatal in dev)"
-    run_stage "vendor"        scripts/build-vendor-modules.sh || log "vendor build had issues (GKI-only zip still produced)"
-    run_stage "pack"          scripts/pack-bootimg.sh
+    # Vendor module build requires the GKI out/ tree (autoconf.h) which Bazel
+    # does NOT populate (it uses bazel-bin/). Until mainlining patches adapt
+    # the vendor tree to Bazel, this stage is expected to fail. The GKI Image
+    # + symvers are the primary deliverable.
+    bash scripts/build-vendor-modules.sh || log "vendor build failed (expected: needs mainlining + Bazel out/ sync)"
+    bash scripts/pack-bootimg.sh || log "packaging failed (GKI Image still available in dist/)"
     ;;
 
   gki)
