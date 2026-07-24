@@ -20,6 +20,7 @@ KERNEL_SRC="${KERNEL_SRC:-$ROOT/kernel-src}"
 OUT_DIR="${OUT_DIR:-$ROOT/out}"
 CFG_DIR="$ROOT/configs"
 FRAG_DIR="$CFG_DIR/fragments"
+CAP_DIR="$CFG_DIR/capabilities"
 FLAVOR_DIR="$CFG_DIR/flavors"
 
 log()  { printf "\033[1;34m[cfg]\033[0m %s\n" "$*"; }
@@ -63,7 +64,15 @@ if [[ -d "$FRAG_DIR" ]]; then
   done
 fi
 
-# 2b. Platform flavor
+# 2b. Capabilities layer (always applied — 180+ verified kernel features)
+if [[ -d "$CAP_DIR" ]]; then
+  for f in "$CAP_DIR"/*.config; do
+    [[ -f "$f" ]] && MERGE_FILES+=("$f")
+  done
+  log "  + capabilities: $(ls "$CAP_DIR"/*.config 2>/dev/null | wc -l) files"
+fi
+
+# 2c. Platform flavor
 PLATFORM_CFG="$FLAVOR_DIR/platform/${FLAVOR_PLATFORM}.config"
 if [[ -f "$PLATFORM_CFG" ]]; then
   MERGE_FILES+=("$PLATFORM_CFG")
@@ -72,7 +81,7 @@ else
   log "  WARNING: platform config not found: $PLATFORM_CFG"
 fi
 
-# 2c. Root flavor
+# 2d. Root flavor
 ROOT_CFG="$FLAVOR_DIR/root/${FLAVOR_ROOT}.config"
 if [[ -f "$ROOT_CFG" ]]; then
   MERGE_FILES+=("$ROOT_CFG")
@@ -81,7 +90,7 @@ else
   log "  WARNING: root config not found: $ROOT_CFG"
 fi
 
-# 2d. Profile flavor
+# 2e. Profile flavor
 PROFILE_CFG="$FLAVOR_DIR/profile/${FLAVOR_PROFILE}.config"
 if [[ -f "$PROFILE_CFG" ]]; then
   MERGE_FILES+=("$PROFILE_CFG")
