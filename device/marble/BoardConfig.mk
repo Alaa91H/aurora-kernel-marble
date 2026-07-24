@@ -1,8 +1,10 @@
 # device/marble/BoardConfig.mk
 #
-# Device BoardConfig for marble (POCO F5 / SM7475).
-# Consumed by an Android tree build; documented here so the kernel build
-# matches what the device's bootloader expects.
+# Device BoardConfig for marble (POCO F5 / Redmi Note 12 Turbo).
+# Verified from LineageOS sm8450-common BoardConfigCommon.mk.
+#
+# Platform: SM8450 (waipio/taro) base, SM7475 (diwali) die
+# Kernel: android12-5.10 GKI base (marble ships android12-5.10 GKI)
 
 # Architecture
 TARGET_ARCH := arm64
@@ -10,42 +12,50 @@ TARGET_ARCH_VARIANT := armv8-2a
 TARGET_CPU_ABI := arm64-v8a
 TARGET_CPU_ABI2 :=
 TARGET_CPU_VARIANT := cortex-a715
+TARGET_CPU_VARIANT_RUNTIME := kryo300
 TARGET_CPU_SMP := true
 
 # Bootloader / partition layout
-TARGET_BOOTLOADER_BOARD_NAME := marble
+TARGET_BOOTLOADER_BOARD_NAME := taro
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_RADIOIMAGE := true
 
-# Boot image header (Android 13+ GKI v4)
+# Platform
+TARGET_BOARD_PLATFORM := taro
+
+# Boot image header (Android 13 GKI v4 — NO init_boot split on marble)
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_KERNEL_IMAGE_NAME := Image
 BOARD_INCLUDE_DTB_IN_BOOT_IMG := true
 BOARD_RAMDISK_USE_LZ4 := true
 
-# Split boot layout (GKI)
+# GKI split layout (marble uses boot + vendor_boot, NO init_boot)
 BOARD_BUILD_BOOTIMAGE_FROM_KERNEL_IMAGE := true
-BOARD_MOVE_INIT_TO_VENDOR_BOOT := true
-BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR := true
+BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR_BOOT := true
 
-# init_boot partition (ramdisk only)
-BOARD_BUILD_INIT_BOOT_IMAGE := true
-BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 8388608
+# boot partition (192 MiB)
+BOARD_BOOTIMAGE_PARTITION_SIZE := 201326592
 
-# vendor_boot
-BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
-BOARD_VENDOR_KERNEL_MODULES_BLOCK := vendor_dlkm
+# dtbo partition (24 MiB)
+BOARD_INCLUDE_RECOVERY_DTBO := true
+TARGET_NEEDS_DTBOIMAGE := true
+BOARD_DTBOIMG_PARTITION_SIZE := 25165824
 
-# vendor_dlkm partition (loadable modules)
+# vendor_boot partition (96 MiB)
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 100663296
+
+# recovery partition (100 MiB)
+BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
+
+# vendor_dlkm partition
 BOARD_VENDOR_DLKMIMAGE_PARTITION_SIZE := 134217728
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 
-# Kernel cmdline (must match configs/vendor_boot.img.cmdline)
-BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom androidboot.memcg=1
+# NO init_boot partition on marble
+# BOARD_BUILD_INIT_BOOT_IMAGE := false
 
-# DTBO
-BOARD_INCLUDE_RECOVERY_DTBO := true
-BOARD_DTBOIMG_PARTITION_SIZE := 25165824
+# Kernel cmdline (cmdline lives in vendor_boot on GKI v4)
+BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom androidboot.memcg=1
 
 # Page size
 BOARD_KERNEL_PAGESIZE := 4096
@@ -59,8 +69,17 @@ BOARD_SECOND_OFFSET := 0x00f00000
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
 BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
 TARGET_USERIMAGES_USE_F2FS := true
 TARGET_USERIMAGES_USE_EXT4 := true
+
+# Super partition
+BOARD_SUPER_PARTITION_SIZE := 9126805504
+BOARD_SUPER_PARTITION_GROUPS := qti_dynamic_partitions
+BOARD_QTI_DYNAMIC_PARTITIONS_SIZE := 9122611200
+BOARD_QTI_DYNAMIC_PARTITIONS_PARTITION_LIST := odm product system system_ext vendor vendor_dlkm
 
 # Encryption
 BOARD_USES_METADATA_PARTITION := true
@@ -70,3 +89,13 @@ BOARD_USES_QCOM_FBE_DECRYPTION := true
 BOARD_AVB_ENABLE := true
 BOARD_AVB_MAKE_VBMETA_IMAGE := true
 BOARD_AVB_ROLLBACK_INDEX := 0
+
+# WLAN (QCA6490, qcacld-3.0 driver)
+BOARD_WLAN_DEVICE := qcwcn
+WIFI_DRIVER_BUILT := qca_cld3
+
+# Display
+TARGET_SCREEN_DENSITY := 440
+
+# SKU handling (taro/diwali for NFC conditional)
+DEVICE_MANIFEST_SKUS := taro diwali

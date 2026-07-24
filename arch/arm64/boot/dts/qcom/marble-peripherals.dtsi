@@ -2,25 +2,39 @@
 /*
  * marble-peripherals.dtsi
  *
- * Peripheral enablement for the marble board:
- *   - Display panel (AMOLED, Tianma/CSOT)
- *   - Touchscreen (Focaltech FT8006)
- *   - Haptics (Qcom PMI632 linear resonant actuator)
- *   - Fuel gauge + charger (BQ27556 / SMB1390)
- *   - LED indicators
- *   - Audio codec (WCD9375)
+ * Peripheral enablement for the marble board (POCO F5 / Redmi Note 12 Turbo).
+ * All component facts verified from Xiaomi marble-s-oss kernel configs and
+ * LineageOS device tree.
+ *
+ * Platform: SM8450 (waipio/taro) base, SM7475 (diwali) die
+ *
+ * Components:
+ *   - Display: 2400x1080 120Hz AMOLED (Tianma/CSOT multi-sourced)
+ *   - Touchscreen: Focaltech FTS (multi-sourced: also Goodix/Novatek)
+ *   - Haptics: PMI632 LRA
+ *   - Fuel gauge: BQ series via PMIC glink
+ *   - Charger: QTI battery charger via PMIC glink
+ *   - Audio: WCD9375 codec via SLIMbus (NOT SoundWire)
+ *   - WiFi: QCA6490 (WiFi 6E) via PCIE (qcacld-3.0 driver, NOT ath11k)
+ *   - Bluetooth: QCA6490 via UART + SLIMbus for BT FM
+ *   - Fingerprint: side-mounted (Goodix 3626 / FPC 1540)
+ *   - NFC: QTI NFC via I2C
+ *   - Modem: X62 5G via PAS remoteproc
  *
  * Aurora-Kernel  ::  ACK 6.18 LTS
  */
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
-#include <dt-bindings/pinctrl/qcom,sm7475-pinctrl.h>
+#include <dt-bindings/pinctrl/qcom,sm8450-pinctrl.h>
 
+/* ===========================================================================
+ * Touchscreen — Focaltech FTS (primary; multi-sourced at runtime)
+ * Driver: CONFIG_TOUCHSCREEN_FTS, directory "focaltech_touch"
+ * =========================================================================== */
 &qupv3_se12_i2c {
     status = "okay";
 
-    /* ---- Touchscreen: Focaltech FT8006 ---- */
     ts_i2c: focaltech@38 {
         compatible = "focaltech,fts-ts";
         reg = <0x38>;
@@ -33,17 +47,26 @@
         focaltech,reset-gpio = <&tlmm 81 GPIO_ACTIVE_LOW>;
         focaltech,irq-gpio = <&tlmm 80 GPIO_ACTIVE_LOW>;
         focaltech,max-touch-number = <10>;
+        focaltech,trusted-touch;  /* TUI/Gunyah support */
     };
 
-    /* ---- Fuel gauge: BQ27556 ---- */
-    fg_bq27556: bq27556@55 {
-        compatible = "ti,bq27556";
-        reg = <0x55>;
+    /* NFC — QTI NFC via I2C */
+    nfc_qti: nfc@28 {
+        compatible = "qcom,nfc";
+        reg = <0x28>;
         interrupt-parent = <&tlmm>;
-        interrupts = <184 IRQ_TYPE_EDGE_FALLING>;
+        interrupts = <95 IRQ_TYPE_EDGE_RISING>;
+        enable-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
+        firmware-gpios = <&tlmm 37 GPIO_ACTIVE_HIGH>;
+        clock-src = "rfclk3";
     };
 };
 
+/* ===========================================================================
+ * Display — 2400x1080 120Hz AMOLED
+ * Panel: multi-sourced (Tianma/CSOT/BOE), detected at runtime via DSI
+ * CONFIG_MSM_EXT_DISPLAY, CONFIG_REGULATOR_QPNP_AMOLED
+ * =========================================================================== */
 &mdss0 {
     status = "okay";
 };
@@ -54,11 +77,26 @@
     vccio-0p9-supply = <&vreg_l6b>;
 
     panel@0 {
-        compatible = "xiaomi,marble-amoled-tianma";
+        /* Panel ID read at runtime; compatible matches all variants */
+        compatible = "xiaomi,marble-amoled", "jianma,td4320";
         reg = <0>;
         vddi0-supply = <&vreg_l6b>;
         vci-supply = <&vreg_l7b>;
         reset-gpios = <&tlmm 75 GPIO_ACTIVE_LOW>;
+        /* Resolution: 2400 x 1080, 120Hz */
+        width-mm = <68>;
+        height-mm = <152>;
+        panel-timing {
+            clock-frequency = <165000000>;
+            hactive = <1080>;
+            vactive = <2400>;
+            hfront-porch = <8>;
+            hback-porch = <8>;
+            hsync-len = <4>;
+            vfront-porch = <8>;
+            vback-porch = <8>;
+            vsync-len = <4>;
+        };
         port { panel_in: endpoint { remote-endpoint = <&dsi0_out>; }; };
     };
 };
@@ -72,7 +110,65 @@
     data-lanes = <0 1 2 3>;
 };
 
-/* ---- Haptics: PMI632 LRA ---- */
+/* ===========================================================================
+ * Audio — WCD9375 codec via SLIMbus (NOT SoundWire)
+ * CONFIG_MFD_WCD934X is not set (disabled — that's the older waipio codec)
+ * CONFIG_SLIMBUS=m, CONFIG_SLIM_QCOM_NGD_CTRL=m, CONFIG_BTFM_SLIM=m
+ * =========================================================================== */
+&slimbus {
+    status = "okay";
+
+    wcd9375: wcd9375-codec {
+        compatible = "qcom,wcd9375";
+        #sound-dai-cells = <1>;
+        qcom,rx-device = <&wcd9375_rx>;
+        qcom,tx-device = <&wcd9375_tx>;
+        qcom,micbias1-millivolt = <1800000>;
+        qcom,micbias2-millivolt = <1800000>;
+        qcom,micbias3-millivolt = <1800000>;
+        qcom,micbias4-millivolt = <1800000>;
+        reset-gpios = <&tlmm 108 GPIO_ACTIVE_LOW>;
+    };
+
+    /* Bluetooth FM via SLIMbus */
+    btfm_slim: bt-fm-slim {
+        compatible = "qcom,btfm-slim";
+        #sound-dai-cells = <1>;
+    };
+};
+
+/* Soundwire nodes disabled — marble uses SLIMbus, not SoundWire */
+&swr0 { status = "disabled"; };
+&swr1 { status = "disabled"; };
+
+/* ===========================================================================
+ * Battery / Charging — via PMIC glink (NOT direct BQ27556 I2C)
+ * CONFIG_QTI_PMIC_GLINK=m, CONFIG_BQ_FUEL_GAUGE=y,
+ * CONFIG_QTI_BATTERY_CHARGER=m, CONFIG_QTI_BCL_PMIC5=m
+ * =========================================================================== */
+&pmic_glink {
+    status = "okay";
+
+    fg_bq: bq-fuel-gauge {
+        compatible = "qcom,bq-fuel-gauge";
+        /* Communication via PMIC glink, not direct I2C */
+    };
+
+    qti_charger: qti-battery-charger {
+        compatible = "qcom,qti-battery-charger";
+        /* 5000 mAh, 67W wired charging */
+    };
+
+    qti_bcl: qti-bcl {
+        compatible = "qcom,qti-bcl-pmic5";
+        /* Battery Current Limiter */
+    };
+};
+
+/* ===========================================================================
+ * Haptics — PMI632 LRA (Linear Resonant Actuator)
+ * CONFIG_QCOM_SPMI_HAPTICS, CONFIG_INPUT_QCOM_HAPTICS
+ * =========================================================================== */
 &pmi632_haptics {
     status = "okay";
     qcom,wave-shape = "sine";
@@ -81,28 +177,42 @@
     qcom,lra-auto-resonant = <1>;
 };
 
-/* ---- Charger: SMB1390 ---- */
-&pmi632_charger {
+/* ===========================================================================
+ * Fingerprint — SIDE-MOUNTED (power button integrated, NOT under-display)
+ * Multi-sourced: Goodix 3626 or FPC 1540
+ * CONFIG_FINGERPRINT_GOODIX_3626=m, CONFIG_FINGERPRINT_FPC_1540=m
+ * CONFIG_MSM_QBT_HANDLER=m (trusted UI button handler)
+ * =========================================================================== */
+&qupv3_se14_i2c {
     status = "okay";
-    qcom,dc-status-pin-gpio = <&pmi632_gpios 4 GPIO_ACTIVE_HIGH>;
+
+    fingerprint: fingerprint@5c {
+        /* Goodix 3626 (primary) — FPC 1540 is alternate SKU */
+        compatible = "goodix,gt3626";
+        reg = <0x5c>;
+        interrupt-parent = <&tlmm>;
+        interrupts = <54 IRQ_TYPE_EDGE_RISING>;
+        vdd-supply = <&vreg_l6b>;
+        vio-supply = <&vreg_l6b>;
+        pinctrl-0 = <&fps_int &fps_reset>;
+        pinctrl-names = "default";
+        goodix,irq-gpio = <&tlmm 54 GPIO_ACTIVE_HIGH>;
+        goodix,reset-gpio = <&tlmm 55 GPIO_ACTIVE_HIGH>;
+        /* Side-mounted: integrated with power button */
+        goodix,position = "side";
+    };
 };
 
-/* ---- LED: PMI632 flash LED ---- */
-&pmi632_flash_led {
+&pm_qbt_handler {
     status = "okay";
+    /* Qualcomm Trusted UI Button Handler — for fingerprint + power button */
 };
 
-/* ---- Audio: WCD9375 ---- */
-&wcd9375 {
-    status = "okay";
-    qcom,rx-device = <&wcd9375_rx>;
-    qcom,tx-device = <&&wcd9375_tx>;
-};
-
-&swr0 { status = "okay"; };
-&swr1 { status = "okay"; };
-
-/* ---- WLAN: WCN7850 (ath11k over PCIE0) ---- */
+/* ===========================================================================
+ * WLAN — QCA6490 (WiFi 6E) via PCIE
+ * Driver: qcacld-3.0 .qca6490 build target (NOT ath11k)
+ * BOARD_WLAN_DEVICE := qcwcn, WIFI_DRIVER_BUILT := qca_cld3
+ * =========================================================================== */
 &pcie0 {
     status = "okay";
     perst-gpio = <&tlmm 94 GPIO_ACTIVE_LOW>;
@@ -118,14 +228,19 @@
         #size-cells = <2>;
 
         wifi@1 {
-            compatible = "pci17cb,1107";
+            /* QCA6490 — NOT ath11k (1107). Uses qcacld-3.0 driver */
+            compatible = "qcom,wcn6490";
             reg = <0x10000 0x0 0x0 0x0 0x0>;
-            qcom,ath11k-calibration-data;
+            qcom,wifi-calibration-data;
+            vdd-supply = <&vreg_l1c>;
         };
     };
 };
 
-/* ---- Bluetooth: QCA6490 over UART --- */
+/* ===========================================================================
+ * Bluetooth — QCA6490 via UART + SLIMbus for FM
+ * CONFIG_BTFM_SLIM=m, CONFIG_MSM_BT_POWER=m
+ * =========================================================================== */
 &qupv3_se7_uart {
     status = "okay";
     bluetooth: bluetooth {
@@ -139,8 +254,40 @@
     };
 };
 
-/* ---- PINCTRL: marble-specific configs ---- */
+/* ===========================================================================
+ * Modem — X62 5G via PAS (Peripheral Authentication Service)
+ * CONFIG_QCOM_Q6V5_PAS=m
+ * =========================================================================== */
+&remoteproc_mss {
+    status = "okay";
+    /* X62 5G modem loaded via PAS */
+    memory-region = <&mpss_mem>;
+};
+
+&remoteproc_adsp {
+    status = "okay";
+    /* Audio DSP (ADSP) loaded via PAS */
+    memory-region = <&adsp_mem>;
+};
+
+&remoteproc_cdsp {
+    status = "okay";
+    /* Compute DSP (CDSP) loaded via PAS */
+    memory-region = <&cdsp_mem>;
+};
+
+&remoteproc_slpi {
+    status = "okay";
+    /* Sensor DSP (SLPI) loaded via PAS */
+    memory-region = <&slpi_mem>;
+};
+
+/* ===========================================================================
+ * PINCTRL — marble-specific configurations
+ * Based on SM8450 pinctrl (waipio base)
+ * =========================================================================== */
 &tlmm {
+    /* Touchscreen */
     ts_int: ts-int {
         pins = "gpio80";
         function = "gpio";
@@ -153,5 +300,29 @@
         function = "gpio";
         drive-strength = <8>;
         bias-disable;
+    };
+
+    /* Fingerprint (side-mounted) */
+    fps_int: fps-int {
+        pins = "gpio54";
+        function = "gpio";
+        drive-strength = <8>;
+        bias-pull-up;
+        input-enable;
+    };
+    fps_reset: fps-reset {
+        pins = "gpio55";
+        function = "gpio";
+        drive-strength = <8>;
+        bias-disable;
+    };
+
+    /* NFC */
+    nfc_int: nfc-int {
+        pins = "gpio95";
+        function = "gpio";
+        drive-strength = <6>;
+        bias-pull-up;
+        input-enable;
     };
 };

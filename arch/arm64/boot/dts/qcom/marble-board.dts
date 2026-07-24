@@ -2,22 +2,25 @@
 /*
  * marble-board.dts
  *
- * Top-level board file for Xiaomi marble.
- * This is the file the Makefile picks up; it includes the SoC dtsi and
- * the marble board include, then enables the peripherals.
+ * Top-level board file for Xiaomi marble (POCO F5 / Redmi Note 12 Turbo).
+ * Platform: SM8450 (waipio/taro) base, SM7475 (diwali) die.
+ *
+ * The kernel builds with CONFIG_ARCH_WAIPIO=y and diwali clock overrides.
+ * The defconfig chain is: gki_defconfig + waipio_GKI.config +
+ * xiaomi_GKI.config + marble_GKI.config.
  *
  * Aurora-Kernel  ::  ACK 6.18 LTS
  */
 
 /dts-v1/;
 
-#include "sm7475.dtsi"
+#include "waipio.dtsi"
 #include "sm7475-marble.dtsi"
 #include "marble-peripherals.dtsi"
 
 / {
     model = "Xiaomi marble (POCO F5 / Redmi Note 12 Turbo)";
-    compatible = "xiaoli,marble", "qcom,sm7475";
+    compatible = "xiaomi,marble", "qcom,waipio", "qcom,diwali";
 
     /*
      * CPU cluster topology for EAS.

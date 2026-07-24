@@ -3,12 +3,14 @@
  * sm7475-marble.dtsi
  *
  * Device tree include for Xiaomi marble (POCO F5 / Redmi Note 12 Turbo)
- * SoC: Qualcomm Snapdragon 7+ Gen 2 (SM7475)
+ * SoC: Qualcomm Snapdragon 7+ Gen 2 (SM7475 / "diwali" die)
+ * Platform base: SM8450 (waipio / taro)
  *
- * This file is layered on top of the ACK sm7475 SoC DTSI and adds the
- * marble-specific board wiring: regulators, panel, touchscreen, haptics,
- * battery, fuel gauge, and the cluster topology used by the Aurora-Kernel
- * EAS scheduler.
+ * SM7475 is a cost-reduced bin of the waipio/taro platform. The kernel
+ * uses CONFIG_ARCH_WAIPIO=y with diwali-specific clock controller
+ * overrides (SM_GPUCC_DIWALI, SM_VIDEOCC_DIWALI).
+ *
+ * The marble board = parrot reference design customized by Xiaomi.
  *
  * Aurora-Kernel  ::  ACK 6.18 LTS
  */
@@ -16,16 +18,17 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/regulator/qcom,rpmh-rpmh.h>
-#include <dt-bindings/clock/qcom,gcc-sm7475.h>
+#include <dt-bindings/clock/qcom,gcc-sm8450.h>
 #include <dt-bindings/clock/qcom,rpmh.h>
-#include <dt-bindings/pinctrl/qcom,sm7475-pinctrl.h>
+#include <dt-bindings/clock/qcom,sm-gpucc-diwali.h>
+#include <dt-bindings/pinctrl/qcom,sm8450-pinctrl.h>
 
-#include "sm7475.dtsi"     // ACK SoC top-level
-#include "sm7475-pinctrl.dtsi"
+#include "waipio.dtsi"         // ACK SoC top-level (SM8450/waipio base)
+#include "waipio-pinctrl.dtsi"
 
 / {
     model = "Xiaomi marble (POCO F5 / Redmi Note 12 Turbo)";
-    compatible = "xiaoli,marble", "qcom,sm7475";
+    compatible = "xiaomi,marble", "qcom,waipio", "qcom,diwali";
     qcom,msm-id = <532 0x10000>;
     qcom,board-id = <0x2B 0x10>;
 

@@ -5,9 +5,11 @@
 # Only the board-level DTS is shipped; SoC-level dtsi come from the ACK tree.
 
 # Marble board (POCO F5 / Redmi Note 12 Turbo)
-dtb-$(CONFIG_ARCH_SM7475) += \
+# Platform: SM8450 (waipio/taro), SM7475 (diwali) die
+# Uses CONFIG_ARCH_WAIPIO (not a separate SM7475 arch)
+dtb-$(CONFIG_ARCH_WAIPIO) += \
     marble-board.dtb
 
 # overlays
-dtbo-$(CONFIG_ARCH_SM7475) += \
+dtbo-$(CONFIG_ARCH_WAIPIO) += \
     marble-board.dtbo
