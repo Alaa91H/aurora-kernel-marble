@@ -10,17 +10,32 @@ on:
     branches: [ main ]
   workflow_dispatch:
     inputs:
-      ksu:
-        description: 'Build with KernelSU'
+      flavor:
+        description: 'Build flavor (platform-root-profile)'
         required: false
-        default: '1'
-        type: choice
-        options: ['1', '0']
+        default: 'aosp-noroot-production'
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor:
+          - aosp-noroot-production
+          - aosp-ksunext-production
+          - hyperos-noroot-production
+          - hyperos-ksunext-production
+          - aosp-noroot-gaming
+          - aosp-noroot-battery
+        exclude:
+          - flavor: ${{ github.event.inputs.flavor != '' && github.event.inputs.flavor || 'nope' }}
+            # when manually triggered with a specific flavor, only build that one
+        include:
+          - flavor: ${{ github.event.inputs.flavor }}
+            # add the manual input as the only matrix entry when provided
 
     steps:
       - name: Checkout Aurora-Kernel repo
@@ -44,7 +59,6 @@ jobs:
             zip zlib1g-dev e2fsprogs \
             cpio device-tree-compiler \
             openssl gettext
-          # newer clang than 22.04 default (14) for better 6.18 support
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - 2>/dev/null || true
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main" | sudo tee /etc/apt/sources.list.d/llvm.list
           sudo apt-get update -y
@@ -73,11 +87,10 @@ jobs:
       - name: Apply patch queue
         run: bash scripts/patch-apply.sh || true
 
-      - name: Build (full GKI + vendor + pack pipeline)
+      - name: Build (flavor: ${{ matrix.flavor }})
         run: |
           chmod +x build.sh
-          KSU="${{ github.event.inputs.ksu || '1' }}" \
-          bash build.sh full
+          FLAVOR="${{ matrix.flavor }}" bash build.sh full
 
       - name: Gather artifacts
         id: artifact
@@ -88,40 +101,34 @@ jobs:
           ZIP="$(ls -1 dist/aurora-kernel-marble-*.zip 2>/dev/null | head -1 || true)"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
           echo "Found zip: $ZIP"
+          # artifact name must be unique per matrix entry
+          FLAVOR_SAFE="$(echo '${{ matrix.flavor }}' | tr '/' '-')"
+          echo "name=aurora-kernel-${FLAVOR_SAFE}" >> "$GITHUB_OUTPUT"
 
       - name: Upload AnyKernel3 flashable zip
         if: steps.artifact.outputs.zip != ''
         uses: actions/upload-artifact@v7
         with:
-          name: aurora-kernel-marble-flashable
+          name: ${{ steps.artifact.outputs.name }}
           path: ${{ steps.artifact.outputs.zip }}
           retention-days: 30
           compression-level: 0
           if-no-files-found: error
 
-      - name: Upload zip checksum
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: aurora-kernel-checksum
-          path: dist/*.sha256
-          retention-days: 30
-          if-no-files-found: ignore
-
       - name: Upload GKI Image (raw kernel binary)
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: gki-image
+          name: gki-image-${{ matrix.flavor }}
           path: dist/Image
-          retention-days: 30
+          retention-days: 14
           if-no-files-found: warn
 
-      - name: Upload vmlinux.symvers (KMI contract for module builds)
+      - name: Upload vmlinux.symvers (KMI contract)
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: vmlinux-symvers
+          name: vmlinux-symvers-${{ matrix.flavor }}
           path: dist/vmlinux.symvers
           retention-days: 30
           if-no-files-found: warn
@@ -130,7 +137,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: abi-report
+          name: abi-report-${{ matrix.flavor }}
           path: |
             dist/abi.removed
             dist/abi.added

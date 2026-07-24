@@ -399,7 +399,81 @@ before merging:
 9. **Verified on Two Platforms:** Tested on at least two hardware targets.
 10. **Documented Before Merge:** Accompanied by architecture docs or ADR.
 
-## 17. Versioned Roadmap
+## 17. Flavor & Variant Architecture
+
+Aurora supports multiple platforms, root solutions, and build profiles
+through a **hierarchical flavor merge** — not separate branches.
+
+### Layered Merge
+
+```
+Core (marble_defconfig + fragments/*.config)
+  ↓
+Platform Layer  (aosp | hyperos)
+  ↓
+Root Layer      (noroot | ksu | ksunext | apatch)
+  ↓
+Profile Layer   (production | gaming | battery | development)
+  ↓
+Final .config
+```
+
+Usage: `FLAVOR="aosp-ksunext-production" ./build.sh`
+
+### Platform Compatibility Matrix
+
+| Platform         | Support | Notes                        |
+|------------------|---------|------------------------------|
+| AOSP             | Full    | Primary target               |
+| HyperOS / MIUI   | Full    | Vendor compatibility layer   |
+| LineageOS        | Full    | Standard AOSP interface      |
+| Evolution X      | Full    | Uses AOSP flavor             |
+| crDroid          | Full    | AOSP compatible             |
+| DerpFest         | Full    | AOSP compatible             |
+| PixelOS          | Full    | AOSP compatible             |
+
+### Root Compatibility Matrix
+
+| Root Solution   | Support | Notes                              |
+|-----------------|---------|------------------------------------|
+| No Root         | Official| Default release, max Play Integrity|
+| KernelSU        | Official| LKM/Built-in via kprobes           |
+| KernelSU-Next   | Official| Preferred, with SUSFS              |
+| APatch          | Official| Kernel-patch based, no kprobes      |
+| Magisk          | Compatible| No kernel dependency             |
+
+### Root Feature Matrix
+
+| Feature                        | NoRoot | KernelSU | KernelSU-Next | APatch |
+|--------------------------------|--------|----------|---------------|--------|
+| Built-in Root                  | No     | Yes      | Yes           | Yes    |
+| LKM Support                    | Yes    | Yes      | Yes           | Yes    |
+| SUSFS                          | No     | Optional | Optional      | Optional|
+| Play Integrity Friendly        | Yes    | Optional | Optional      | Optional|
+| OTA Compatibility              | Yes    | Yes      | Yes           | Yes    |
+
+### Build Profile Matrix
+
+| Profile      | Preemption    | HZ  | zRAM Writeback | CFI  | Debug |
+|--------------|---------------|-----|----------------|------|-------|
+| Production   | Dynamic       | 250 | Yes            | On   | Minimal|
+| Gaming       | Full          | 250 | No             | On   | Off   |
+| Battery      | None          | 100 | Yes            | On   | Off   |
+| Development  | Voluntary     | 250 | Yes            | Perm | Full  |
+
+### Variant Naming
+
+```
+aurora-kernel-marble-6.18-ack-<platform>-<root>-<profile>-<sha>.zip
+```
+
+Examples:
+- `aurora-kernel-marble-6.18-ack-aosp-noroot-production-abc123.zip`
+- `aurora-kernel-marble-6.18-ack-hyperos-ksunext-battery-def456.zip`
+
+---
+
+## 18. Versioned Roadmap
 
 - **Aurora 1.0 (Baseline Foundation):** Linux 6.6 LTS core, MGLRU default,
   Android 15 GKI compliance, core security hardening (KCFI, MTE).
@@ -414,7 +488,7 @@ before merging:
 > and Bazel/kleaf GKI build verified working on CI; vendor mainlining
 > (5.10 → 6.18) is the active engineering task.
 
-## 18. Features Outside Kernel Scope
+## 19. Features Outside Kernel Scope
 
 Aurora Kernel intentionally excludes userspace frameworks and peripheral
 firmware from the kernel image:
@@ -429,7 +503,7 @@ These are managed by Android userspace, proprietary vendor software, or
 platform firmware. Aurora Kernel provides solely the foundational kernel
 infrastructure.
 
-## 19. Aurora Optimization Strategy
+## 20. Aurora Optimization Strategy
 
 - **Latency Optimization:** Minimizes scheduler domain round-trip times,
   interrupt handling latency via thread IRQs, and RCU callback offloading.

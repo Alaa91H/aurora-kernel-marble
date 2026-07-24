@@ -8,23 +8,34 @@
 - **Vendor tree:** Qualcomm/Xiaomi `msm-kernel` for marble (fetched by
   `scripts/vendor-fetch.sh`). Provides SoC drivers as loadable modules.
 
-## Architecture (GKI split)
-The build follows Google's GKI (Generic Kernel Image) model:
-1. **GKI core** — built from ACK 6.18, produces `Image` + `vmlinux.symvers`.
+## Architecture (GKI split + Flavor system)
+The build follows Google's GKI (Generic Kernel Image) model with a
+hierarchical flavor merge for platform/root/profile variants:
+
+### GKI layers
+1. **GKI core** — built from ACK 6.18 via Bazel/kleaf, produces `Image` +
+   `vmlinux.symvers`.
 2. **Vendor modules** — built from the msm-kernel tree *against* the GKI
-   `Module.symvers`, produces `vendor_dlkm` (loadable `.ko`).
-3. **Boot images** — `boot.img` (GKI Image+ramdisk), `init_boot.img`
-   (ramdisk), `vendor_boot.img` (dtbo+vendor_ramdisk), `vendor_dlkm.img`
-   (ext4 modules partition), all AVB-signed.
+   `Module.symvers` (expected to fail until mainlining patches are done).
+3. **AnyKernel3 zip** — patches the existing `boot` partition on-device
+   using magiskboot (preserves ramdisk, Magisk, cmdline, AVB).
+
+### Flavor system
+`FLAVOR="platform-root-profile"` controls 3 config fragment layers:
+- **Platform:** `configs/flavors/platform/{aosp,hyperos}.config`
+- **Root:** `configs/flavors/root/{noroot,ksu,ksunext,apatch}.config`
+- **Profile:** `configs/flavors/profile/{production,gaming,battery,development}.config`
+
+Default: `FLAVOR=aosp-noroot-production`
 
 ## Commands
 ```bash
-./build.sh                 # full pipeline (setup -> gki -> abi -> vendor -> pack)
-./build.sh gki             # only GKI core
-./build.sh vendor          # only vendor modules (needs GKI built)
-./build.sh pack            # only package (needs gki+vendor)
-./build.sh abi             # only KMI symbol check
-./build.sh clean           # mrproper + dist wipe
+./build.sh                            # full pipeline (default flavor)
+FLAVOR=aosp-ksunext-production ./build.sh
+FLAVOR=hyperos-noroot-battery ./build.sh
+./build.sh gki                        # only GKI core
+./build.sh pack                       # only package
+./build.sh clean                      # full wipe
 
 # individual sources (build.sh runs these on demand):
 ./setup.sh                 # fetch ACK 6.18 LTS + KSU + AnyKernel3

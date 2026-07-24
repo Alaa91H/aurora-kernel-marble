@@ -5,20 +5,25 @@
 # Runs the complete professional pipeline:
 #   1. setup.sh         (fetch ACK 6.18 + KSU + AnyKernel3)      [if missing]
 #   2. vendor-fetch.sh  (fetch Qualcomm/Xiaomi marble vendor tree) [if missing]
-#   3. toolchain.sh     (fetch Proton-Clang)                     [if missing]
+#   3. toolchain.sh     (set up Clang/LLD)                       [if missing]
 #   4. build-gki.sh     (compile GKI core + Module.symvers)
-#   5. abi-monitor.sh   (enforce KMI stability)
-#   6. build-vendor-modules.sh (compile SoC .ko against GKI)
-#   7. pack-bootimg.sh  (boot.img + init_boot + vendor_boot + vendor_dlkm + dtbo + AVB)
+#   5. abi-monitor.sh   (enforce KMI stability, non-fatal)
+#   6. build-vendor-modules.sh (compile SoC .ko against GKI, non-fatal)
+#   7. pack-bootimg.sh  (AnyKernel3 flashable zip)
+#
+# Flavor system (hierarchical: platform-root-profile):
+#   FLAVOR="aosp-noroot-production"      (default — no root, balanced)
+#   FLAVOR="aosp-ksunext-production"     (KSU-Next root)
+#   FLAVOR="hyperos-noroot-battery"      (HyperOS, no root, battery profile)
+#   FLAVOR="aosp-apatch-gaming"          (APatch root, gaming profile)
 #
 # Usage:
-#   ./build.sh                  full pipeline
-#   ./build.sh gki              only GKI core (skip vendor)
-#   ./build.sh vendor           only vendor modules (assumes GKI built)
-#   ./build.sh pack             only package (assumes gki+vendor built)
-#   ./build.sh clean            mrproper + dist wipe
-#   KSU=0 ./build.sh            build without KernelSU
-#   MENUCONFIG=1 ./build.sh     open menuconfig before GKI build
+#   ./build.sh                         full pipeline (default flavor)
+#   FLAVOR=aosp-ksunext-production ./build.sh
+#   ./build.sh gki                     only GKI core
+#   ./build.sh pack                    only package
+#   ./build.sh clean                   full wipe
+#   MENUCONFIG=1 ./build.sh            open menuconfig before GKI build
 #
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -28,8 +33,23 @@ cd "$ROOT"
 # Options
 # ---------------------------------------------------------------------------
 STAGE="${1:-full}"
-BUILD_KSU="${KSU:-1}"
 MENUCONFIG="${MENUCONFIG:-0}"
+
+# Flavor system: FLAVOR="platform-root-profile"
+# Default: aosp-noroot-production
+export FLAVOR="${FLAVOR:-aosp-noroot-production}"
+
+# Derive VERSION and KSU flag from FLAVOR for downstream scripts
+IFS='-' read -r _FLAVOR_PLATFORM _FLAVOR_ROOT _FLAVOR_PROFILE <<< "$FLAVOR"
+if [[ "$_FLAVOR_ROOT" == "ksu" || "$_FLAVOR_ROOT" == "ksunext" ]]; then
+  BUILD_KSU=1
+else
+  BUILD_KSU=0
+fi
+
+# Version string includes the flavor
+export VERSION="${VERSION:-6.18-ack-${FLAVOR}}"
+export SHA="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 
 log()  { printf "\033[1;34m[aurora]\033[0m %s\n" "$*"; }
 ok()   { printf "\033[1;32m[ok]\033[0m   %s\n" "$*"; }
