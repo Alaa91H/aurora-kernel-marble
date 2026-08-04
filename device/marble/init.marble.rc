@@ -16,6 +16,13 @@ on early-init
     mkdir /dev/stune/foreground/default 0755 system system
 
 on init
+    # External storage mount points (must exist for the vold-managed
+    # sdcard1 / usbotg volumes declared in fstab.marble)
+    mkdir /storage/sdcard1 0700 media_rw media_rw
+    mkdir /storage/usbotg 0700 media_rw media_rw
+    # Match LineageOS init.qcom.rc for this device
+    symlink /sdcard /storage/sdcard0
+
     # Apply the Aurora sysctl + cpu + io tuning
     exec u:r:fsck:s0 -- /system/bin/sh /sbin/aurora-tune.sh balanced
 

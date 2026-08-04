@@ -177,10 +177,12 @@
      *   target_uv = the voltage to actually apply (this is the UV)
      *   min/max   = the regulator tolerance window (keep ±5mV)
      *
-     * Stock SM7475 reference voltages (Qualcomm LA.VENDOR.1.0):
-     *   silver  : 0.60 - 0.95 V
-     *   gold    : 0.65 - 1.05 V
-     *   prime   : 0.70 - 1.12 V
+     * NOTE: the exact stock SM7475 OPP voltages ship in Xiaomi's
+     * marble-s-oss vmlinux/dtbo — they are NOT reproduced here. The values
+     * below are conservative starting estimates that MUST be cross-checked
+     * against the real device's OPP table before flashing; wrong voltages
+     * can prevent boot or damage silicon. If crashes occur at high freq,
+     * raise the target voltage by 10mV increments until stable.
      */
     cpu_silver_opp: opp-table-silver {
         compatible = "operating-points-v2";

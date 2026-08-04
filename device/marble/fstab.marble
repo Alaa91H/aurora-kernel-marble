@@ -1,33 +1,45 @@
 # device/marble/fstab.marble
 #
-# Filesystem table for marble.
+# Filesystem table for marble (POCO F5 / Redmi Note 12 Turbo).
 # Mounted by first-stage init from the vendor_boot ramdisk.
-# UFS = /dev/block/by-name/userdata, /dev/block/by-name/vendor, etc.
+#
+# VERIFIED against the official device fstab (LineageOS fstab.qcom for
+# marble / sm8450-common + Xiaomi marble-s-oss partition table):
+#   - system/system_ext/product are LOGICAL partitions inside super
+#     (require the 'logical' flag + avb=vbmeta_system)
+#   - vendor/vendor_dlkm/odm are logical too (avb)
+#   - UFS boot device: soc/1d84000.ufshc  ->  /dev/block/by-name/...
+#   - NO /cache and NO /frp partitions exist on this GKI v4 device
+#   - sdcard1 (microSD) + usbotg (USB-OTG) are vold-managed sysfs volumes
+#     (verbatim from LineageOS fstab.qcom for marble / sm8450-common)
 
-# /system must be at / in first-stage init (mount via dm-verity)
-/system            /system            ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
-/vendor            /vendor            ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
-/vendor_dlkm      /vendor_dlkm       ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
-/system_dlkm      /system_dlkm       ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
-/odm               /odm               ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+# Logical (super) partitions — avb=vbmeta_system for system group
+/system            /system            ext4    ro,barrier=1,discard                            wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+/system_ext        /system_ext        ext4    ro,barrier=1,discard                            wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+/product           /product           ext4    ro,barrier=1,discard                            wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+/vendor            /vendor            ext4    ro,barrier=1,discard                            wait,slotselect,avb,logical,first_stage_mount
+/vendor_dlkm       /vendor_dlkm       ext4    ro,barrier=1,discard                            wait,slotselect,avb,logical,first_stage_mount
+/odm               /odm               ext4    ro,barrier=1,discard                            wait,slotselect,avb,logical,first_stage_mount
 
-# Persistent partitions
-/product           /product           ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
-/system_ext       /system_ext        ext4    ro,barrier=1,discard                            wait,slotselect,avb,first_stage_mount
+# Metadata (FBE wrapped-key storage)
+/metadata          /metadata          ext4    noatime,nosuid,nodev,discard                    wait,check,formattable,wrappedkey,first_stage_mount
 
-# Data (encrypted via fscrypt v2 inline crypto)
-/data              /data              f2fs    noatime,discard,reserve_root=32768,resgid=1065,inlinecrypt,fsync_mode=noflush_checkpoint wait,check,formattable,late,encrypted,quota,reservedsize=128M,checkpoint=fs
-/cache             /cache             ext4    noatime,nosuid,nodev,noauto_da_alloc,discard    wait,check,formattable
+# Data — f2fs with inline crypto + fscrypt v2 (wrapped key)
+/data              /data              f2fs    noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,fsync_mode=nobarrier,inlinecrypt    latemount,wait,check,formattable,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0,keydirectory=/metadata/vold/metadata_encryption,metadata_encryption=aes-256-xts:wrappedkey_v0,quota,reservedsize=128M,sysfs_path=/sys/devices/platform/soc/1d84000.ufshc,checkpoint=fs
 
-# Metadata (for FBE key)
-/metadata          /metadata          ext4    noatime,nosuid,nodev,noauto_da_alloc,discard    wait,check,formattable,first_stage_mount
+# Persist (system properties)
+/persist           /mnt/vendor/persist  ext4  noatime,nosuid,nodev,barrier=1                  wait,check
 
-# Persistent (persist partition for system properties)
-/persist           /persist           ext4    noatime,nosuid,nodev,noauto_da_alloc,discard    wait,check,first_stage_mount
+# External storage — SD card + USB OTG (vold-managed volumes, verbatim from LOS fstab.qcom)
+/devices/platform/soc/8804000.sdhci/mmc_host*           /storage/sdcard1       vfat    nosuid,nodev                                         wait,voldmanaged=sdcard1:auto,encryptable=footer
+/devices/platform/soc/*.ssusb/*.dwc3/xhci-hcd.*.auto*   /storage/usbotg        vfat    nosuid,nodev                                         wait,voldmanaged=usbotg:auto
 
-# RAM disks
-/tmp               /tmp               tmpfs   nosuid,nodev,noexec                             defaults
+# Firmware / modem partitions (loaded by vendor HALs)
+/modem             /vendor/firmware_mnt vfat  ro,shortname=lower,uid=1000,gid=1000,dmask=227,fmask=337,context=u:object_r:firmware_file:s0    wait,slotselect
+/dsp               /vendor/dsp         ext4    ro,nosuid,nodev,barrier=1                      wait,slotselect
+/vm-bootsys        /vendor/vm-system   ext4    ro,nosuid,nodev,barrier=1                      wait,slotselect
+/bluetooth         /vendor/bt_firmware vfat    ro,shortname=lower,uid=1002,gid=3002,dmask=227,fmask=337,context=u:object_r:bt_firmware_file:s0 wait,slotselect
+/qmcs              /mnt/vendor/qmcs    vfat    noatime,nosuid,nodev,context=u:object_r:vendor_qmcs_file:s0   wait,check,formattable
 
 # Misc
 /misc              /misc              emmc    defaults                                        defaults
-/frp               /persistent        emmc    defaults                                        defaults

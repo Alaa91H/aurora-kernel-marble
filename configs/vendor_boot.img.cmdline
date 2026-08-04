@@ -12,12 +12,13 @@
 # the '#' comment lines MUST be stripped first — a kernel cmdline is a
 # single space-separated string and a literal '#' would break parsing.
 #
-# --- Android boot essentials ---
+# --- Android boot essentials (usbcontroller verified from LineageOS sm8450-common) ---
 console=ttyMSM0,115200n8
 androidboot.hardware=qcom
 androidboot.console=ttyMSM0
 androidboot.memcg=1
 androidboot.memfract=1
+androidboot.usbcontroller=a600000.dwc3
 androidboot.boot_devices=soc/1d84000.ufshc
 
 # --- Vmalloc / IOMMU ---

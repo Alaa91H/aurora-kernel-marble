@@ -54,8 +54,13 @@ BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 # NO init_boot partition on marble
 # BOARD_BUILD_INIT_BOOT_IMAGE := false
 
-# Kernel cmdline (cmdline lives in vendor_boot on GKI v4)
-BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom androidboot.memcg=1
+# Kernel cmdline + bootconfig (cmdline lives in vendor_boot on GKI v4)
+# VERIFIED from LineageOS sm8450-common BoardConfigCommon.mk
+BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom
+BOARD_BOOTCONFIG := \
+    androidboot.hardware=qcom \
+    androidboot.memcg=1 \
+    androidboot.usbcontroller=a600000.dwc3
 
 # Page size
 BOARD_KERNEL_PAGESIZE := 4096

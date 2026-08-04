@@ -532,7 +532,7 @@ CONFIG_QCOM_SPMI_FLASH_LED=y
 CONFIG_QPNP_LED=y
 CONFIG_QPNP_PWM=y
 CONFIG_INPUT_GPIO=y
-CONFIG_QCOM_SPMI_HAPTICS=y
+CONFIG_INPUT_QCOM_HV_HAPTICS=y
 
 # ---------------------------------------------------------------------------
 # RTC / timers / clocks

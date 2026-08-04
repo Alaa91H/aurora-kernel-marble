@@ -11,7 +11,7 @@
  * Components:
  *   - Display: 2400x1080 120Hz AMOLED (Tianma/CSOT multi-sourced)
  *   - Touchscreen: Focaltech FTS (multi-sourced: also Goodix/Novatek)
- *   - Haptics: PMI632 LRA
+ *   - Haptics: PM8350B HV LRA (CONFIG_INPUT_QCOM_HV_HAPTICS)
  *   - Fuel gauge: BQ series via PMIC glink
  *   - Charger: QTI battery charger via PMIC glink
  *   - Audio: WCD9375 codec via SLIMbus (NOT SoundWire)
@@ -166,15 +166,15 @@
 };
 
 /* ===========================================================================
- * Haptics — PMI632 LRA (Linear Resonant Actuator)
- * CONFIG_QCOM_SPMI_HAPTICS, CONFIG_INPUT_QCOM_HAPTICS
+ * Haptics — PM8350B HV haptics (Linear Resonant Actuator)
+ * VERIFIED: Xiaomi marble-s-oss sets CONFIG_INPUT_QCOM_HV_HAPTICS=m
+ * (AW8697/AW86927 explicitly disabled). PMI632 is NOT on this platform —
+ * waipio/diwali uses the PM8350B PMIC with the QCOM HV haptics driver.
  * =========================================================================== */
-&pmi632_haptics {
+&pm8350b_haptics {
     status = "okay";
     qcom,wave-shape = "sine";
     qcom,play-mode = "buffer";
-    qcom,lra-resonance-sigqd = "0x7d";
-    qcom,lra-auto-resonant = <1>;
 };
 
 /* ===========================================================================
@@ -245,7 +245,10 @@
     status = "okay";
     bluetooth: bluetooth {
         compatible = "qcom,qca6490-bt";
-        enable-gpios = <&pmi632_gpios 8 GPIO_ACTIVE_HIGH>;
+        /* NOTE: GPIO parent must match the platform PMIC (PM8350B on
+         * waipio/diwali — NOT PMI632). Verify the exact BT enable GPIO
+         * against marble-s-oss before use. */
+        enable-gpios = <&pm8350b_gpios 8 GPIO_ACTIVE_HIGH>;
         clocks = <&rpmhcc RPMH_RF_CLK1>;
         vddio-supply = <&vreg_l6b>;
         vddaon-supply = <&vreg_l8c>;
