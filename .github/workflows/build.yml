@@ -11,9 +11,11 @@ on:
   workflow_dispatch:
     inputs:
       flavor:
-        description: 'Build flavor (platform-root-profile)'
+        description: >-
+          Build one flavor (platform-root-profile), or 'all' to build the full
+          8-flavor matrix (aosp/hyperos x noroot/ksu x production/gaming).
         required: false
-        default: 'aosp-noroot-production'
+        default: 'all'
         type: string
 
 jobs:
@@ -23,11 +25,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # workflow_dispatch with a chosen flavor -> build only that flavor.
-        # push / PR -> build the single default flavor (trial mode: one fast
-        # validation build instead of 6 parallel heavy ones). Run the full
-        # matrix manually via workflow_dispatch to cover all flavors.
-        flavor: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.flavor)) || fromJSON('["aosp-noroot-production"]') }}
+        # 'all' (workflow_dispatch default) -> full 8-flavor matrix in one run.
+        # A specific flavor string -> build only that flavor.
+        # push / PR -> single default flavor (trial mode: one fast validation
+        # build instead of 8 parallel heavy ones).
+        flavor: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.flavor == 'all' && fromJSON('["aosp-noroot-production","aosp-noroot-gaming","aosp-ksu-production","aosp-ksu-gaming","hyperos-noroot-production","hyperos-noroot-gaming","hyperos-ksu-production","hyperos-ksu-gaming"]') || fromJSON(format('["{0}"]', github.event.inputs.flavor))) || fromJSON('["aosp-noroot-production"]') }}
 
     steps:
       - name: Checkout Aurora-Kernel repo
