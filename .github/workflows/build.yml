@@ -79,7 +79,7 @@ jobs:
       - name: Apply patch queue
         run: bash scripts/patch-apply.sh || true
 
-      - name: Build (flavor: ${{ matrix.flavor }})
+      - name: "Build (flavor: ${{ matrix.flavor }})"
         run: |
           chmod +x build.sh
           FLAVOR="${{ matrix.flavor }}" bash build.sh full
