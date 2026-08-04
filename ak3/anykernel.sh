@@ -34,20 +34,27 @@ device.name2=marblein
 
 supported.versions=
 supported.patchlevels=
-'; }
+'; } # end properties
+
+## — boot files attributes (permissions for the ramdisk overlay) —
+boot_attributes() {
+  set_perm_recursive 0 0 755 644 $RAMDISK/*;
+  set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+} # end attributes
 
 ## — block / slot —
-# block=auto lets AK3 find the boot partition by name (/dev/block/by-name/boot)
-block=boot;
+# BLOCK=boot tells AK3 to locate the boot partition by name
+# (/dev/block/by-name/boot), appending the active slot suffix on A/B.
+BLOCK=boot;
 
 # marble is an A/B slot device; auto detects and appends _a/_b
-is_slot_device=auto;
+IS_SLOT_DEVICE=auto;
 
 # ramdisk compression: auto-detect from the existing boot image
-ramdisk_compression=auto;
+RAMDISK_COMPRESSION=auto;
 
 # GKI is bootable with verity ON as long as AVB isn't enforced for boot
-patch_vbmeta_flag=auto;
+PATCH_VBMETA_FLAG=auto;
 
 ## — main flash routine —
 # Source the AK3 core (provides dump_boot, write_boot, backup helpers)
@@ -62,14 +69,23 @@ backup_current_boot() {
   local backup_img="${backup_dir}/boot-marble-${slot_name}-${stamp}.img";
 
   mkdir -p "$backup_dir";
-  dd if=/dev/block/by-name/boot$(slotselect) of="$backup_img" 2>/dev/null;
+  # SLOT is exported by ak3-core.sh for A/B devices; use it instead of a
+  # nonexistent $(slotselect) helper
+  dd if=/dev/block/by-name/boot${SLOT} of="$backup_img" 2>/dev/null;
   echo "[aurora] backed up current boot to ${backup_img}";
 }
 
 ## — execute the patch flow —
 # 1. dump_boot: unpack the existing boot partition using magiskboot
 # 2. backup_current_boot: save a copy before we modify anything
-# 3. write_boot: repack with the new Image (from zip root) and flash back
+# 3. append the init.aurora.rc import into the UNPACKED ramdisk's init.rc
+#    (AK3 file-edit helpers only touch the unpacked ramdisk, so this must
+#    come after dump_boot; patch/init.rc supplies the import line)
+# 4. write_boot: repack with the new Image (from zip root) and flash back
 dump_boot;
 backup_current_boot;
+# init.aurora.rc (overlaid into ramdisk/ by pack-bootimg.sh) must be imported
+# by the stock init.rc or its triggers never fire.
+backup_file init.rc;
+append_file init.rc "import /init.aurora.rc" init.rc;
 write_boot;

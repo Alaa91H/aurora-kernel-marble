@@ -117,7 +117,7 @@ apply_cpu() {
 apply_io() {
     for b in /sys/block/sda /sys/block/sdb /sys/block/dm-*; do
         [ -d "$b" ] || continue
-        p "$b/queue/scheduler" maple
+        p "$b/queue/scheduler" bfq
         p "$b/queue/iosched/slice_idle" 0
         p "$b/queue/iosched/low_latency" 1
         p "$b/queue/nr_requests" 256
@@ -133,7 +133,7 @@ apply_zram() {
     local z=/sys/block/zram0
     [ -d "$z" ] || return 0
     p "$z/comp_algorithm" zstd
-    p "$z/max_comp_streams" 8
+    # NOTE: max_comp_streams was removed from the kernel (zram) long ago
     case "$PROFILE" in
         performance) p "$z/disksize" 2147483648 ;;  # 2GB
         battery)     p "$z/disksize" 4294967296 ;;  # 4GB

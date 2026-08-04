@@ -118,7 +118,7 @@ if [[ -z "$BAZEL" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Locate build artifacts — Bazel and make use different output layouts
+# 3. Locate build artifacts — Bazel and make use different output layouts
 # ---------------------------------------------------------------------------
 # Bazel/kleaf raw build output: <kernel-root>/bazel-bin/common/kernel_aarch64
 #   contains: Image, vmlinux, Module.symvers, modules.builtin, *.ko
@@ -177,7 +177,7 @@ fi
 [[ -n "$SYMVERS" ]] && ok "symvers: $SYMVERS"
 
 # ---------------------------------------------------------------------------
-# 5. Copy to DIST_DIR for the packaging step
+# 4. Copy to DIST_DIR for the packaging step
 # ---------------------------------------------------------------------------
 mkdir -p "$DIST_DIR"
 cp -f "$IMG" "$DIST_DIR/Image"

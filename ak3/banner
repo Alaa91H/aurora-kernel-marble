@@ -11,9 +11,9 @@
 |_|  \__| |__|  |__|__|__| \______||__|
 
    Android Common Kernel 6.18 LTS
-   Built: $(date -u 2>/dev/null || echo "CI")
-   Version: ${VERSION:-6.18-ack}
-   Commit: ${SHA:-unknown}
+   Built: ${BUILT}
+   Version: ${VERSION}
+   Commit: ${SHA}
    Source: https://github.com/Alaa91H/aurora-kernel-marble
 
    Features:

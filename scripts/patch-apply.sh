@@ -32,14 +32,16 @@ while read -r p; do
   [[ "$p" == \#* ]] && continue
   PATCH="$PATCH_DIR/$p"
   [[ -f "$PATCH" ]] || { log "missing patch: $p"; FAILED=$((FAILED+1)); continue; }
-  if git am --show-current-patch >/dev/null 2>&1; then
-    log "already mid-am, skipping $p"
-    continue
-  fi
-  if git log --oneline -1 --grep="$p" >/dev/null 2>&1; then
+  # Idempotency: a patch is already applied if `git apply --reverse` succeeds
+  # on the current tree. (Checking commit messages by filename is unreliable.)
+  if git apply --check --reverse "$PATCH" >/dev/null 2>&1; then
     log "already applied: $p"
     APPLIED=$((APPLIED+1))
     continue
+  fi
+  if git am --show-current-patch >/dev/null 2>&1; then
+    log "aborting stale git am session"
+    git am --abort 2>/dev/null || true
   fi
   log "applying: $p"
   if git am --3way --ignore-whitespace "$PATCH" 2>/dev/null; then

@@ -23,19 +23,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flavor:
-          - aosp-noroot-production
-          - aosp-ksunext-production
-          - hyperos-noroot-production
-          - hyperos-ksunext-production
-          - aosp-noroot-gaming
-          - aosp-noroot-battery
-        exclude:
-          - flavor: ${{ github.event.inputs.flavor != '' && github.event.inputs.flavor || 'nope' }}
-            # when manually triggered with a specific flavor, only build that one
-        include:
-          - flavor: ${{ github.event.inputs.flavor }}
-            # add the manual input as the only matrix entry when provided
+        # workflow_dispatch with a chosen flavor -> build only that flavor.
+        # push / PR -> build the single default flavor (trial mode: one fast
+        # validation build instead of 6 parallel heavy ones). Run the full
+        # matrix manually via workflow_dispatch to cover all flavors.
+        flavor: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.flavor)) || fromJSON('["aosp-noroot-production"]') }}
 
     steps:
       - name: Checkout Aurora-Kernel repo

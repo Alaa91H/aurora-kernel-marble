@@ -1,10 +1,17 @@
 # configs/vendor_boot.img.cmdline
-# Kernel command line for marble (passed by bootloader/vendor_boot.img)
 #
-# Aurora-Kernel reads these at boot; AnyKernel3 injects them into boot.img.
-# These are the *additional* cmdline args Aurora appends — the bootloader
-# supplies the rest (androidboot.* etc).
-
+# REFERENCE-ONLY — this file is NOT consumed by any build script.
+#
+# AnyKernel3 does NOT inject a cmdline into the image: it preserves the
+# cmdline of the existing boot partition on-device (the professional GKI
+# patch model). The bootloader supplies androidboot.* and the ROM's
+# vendor_boot.img carries the rest.
+#
+# The lines below document the additional args Aurora expects the ROM /
+# bootloader to provide. If this file is ever wired into a pack step,
+# the '#' comment lines MUST be stripped first — a kernel cmdline is a
+# single space-separated string and a literal '#' would break parsing.
+#
 # --- Android boot essentials ---
 console=ttyMSM0,115200n8
 androidboot.hardware=qcom

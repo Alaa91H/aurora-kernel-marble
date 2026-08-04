@@ -29,6 +29,7 @@ AK_DIR="${AK_DIR:-$ROOT/AnyKernel3}"
 AK_OVERLAY="$ROOT/ak3"
 VERSION="${VERSION:-6.18-ack}"
 SHA="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
+BUILT="$(date -u '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo CI)"
 
 log()  { printf "\033[1;34m[pack]\033[0m %s\n" "$*"; }
 ok()   { printf "\033[1;32m[ok]\033[0m %s\n" "$*"; }
@@ -75,15 +76,25 @@ else
 fi
 
 if [[ -f "$AK_OVERLAY/banner" ]]; then
-  # expand $VERSION and $SHA in the banner (fallback to sed if envsubst missing)
+  # expand $VERSION, $SHA and $BUILT in the banner (envsubst if present,
+  # sed fallback otherwise — banner uses plain ${VAR} placeholders)
   if command -v envsubst >/dev/null 2>&1; then
-    VERSION="$VERSION" SHA="$SHA" envsubst < "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
+    VERSION="$VERSION" SHA="$SHA" BUILT="$BUILT" envsubst < "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
       cp -f "$AK_OVERLAY/banner" "$AK3_WORK/banner"
   else
-    sed "s/\${VERSION}/$VERSION/g; s/\${SHA}/$SHA/g" "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
+    sed "s/\${VERSION}/$VERSION/g; s/\${SHA}/$SHA/g; s/\${BUILT}/$BUILT/g" "$AK_OVERLAY/banner" > "$AK3_WORK/banner" 2>/dev/null || \
       cp -f "$AK_OVERLAY/banner" "$AK3_WORK/banner"
   fi
   ok "banner applied"
+fi
+
+# overlay patch/ dir (init.rc import hook + any ramdisk patch files)
+if [[ -d "$AK_OVERLAY/patch" ]]; then
+  mkdir -p "$AK3_WORK/patch"
+  cp -rf "$AK_OVERLAY/patch/"* "$AK3_WORK/patch/" 2>/dev/null || true
+  ok "patch/ dir (init.rc import hook) applied"
+else
+  warn "no patch/ dir in ak3 overlay; init.aurora.rc will not be imported by ramdisk init"
 fi
 
 # ---------------------------------------------------------------------------
@@ -100,13 +111,18 @@ if command -v gzip >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Copy runtime tuning into the zip (for first-boot init)
+# 4. Copy runtime tuning into the AK3 ramdisk overlay
+#    AnyKernel3 overlays anything under ramdisk/ onto the unpacked boot
+#    ramdisk. init.aurora.rc + 99-aurora-thermald.rc land at the ramdisk
+#    root (init imports /99-aurora-thermald.rc); aurora-tune.sh and the
+#    sysctl.conf land in ramdisk/sbin/ where the tune script looks for them.
 # ---------------------------------------------------------------------------
-log "copying runtime tuning files"
-cp -f rootfs/init.aurora.rc          "$AK3_WORK/" 2>/dev/null || true
-cp -f rootfs/aurora-tune.sh          "$AK3_WORK/" 2>/dev/null || true
-cp -f rootfs/99-aurora-sysctl.conf   "$AK3_WORK/" 2>/dev/null || true
-cp -f rootfs/99-aurora-thermald.rc   "$AK3_WORK/" 2>/dev/null || true
+log "copying runtime tuning into ramdisk overlay"
+mkdir -p "$AK3_WORK/ramdisk/sbin"
+cp -f rootfs/init.aurora.rc        "$AK3_WORK/ramdisk/" 2>/dev/null || true
+cp -f rootfs/99-aurora-thermald.rc "$AK3_WORK/ramdisk/" 2>/dev/null || true
+cp -f rootfs/aurora-tune.sh        "$AK3_WORK/ramdisk/sbin/" 2>/dev/null || true
+cp -f rootfs/99-aurora-sysctl.conf "$AK3_WORK/ramdisk/sbin/" 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # 5. Build the zip
@@ -183,7 +199,7 @@ Contents:
   - anykernel.sh       (marble board config: block=boot, slot=auto)
   - banner             (Aurora branding)
   - tools/             (magiskboot, busybox, ak3-core.sh)
-  - runtime tuning     (init.aurora.rc, aurora-tune.sh, sysctl.conf)
+  - ramdisk overlay    (init.aurora.rc + init.rc import, aurora-tune.sh, sysctl.conf)
 
 How it flashes:
   1. User flashes zip via Kernel Flasher / TWRP / OrangeFox

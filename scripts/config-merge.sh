@@ -120,8 +120,12 @@ if [[ ${#MERGE_FILES[@]} -gt 0 ]]; then
 
   MERGE="$KERNEL_SRC/scripts/merge_config.sh"
   if [[ -x "$MERGE" ]]; then
+    # NOTE: do NOT pass -n here — merge_config.sh's -n means "start from
+    # allnoconfig as the base", which would strip every default symbol that
+    # marble_defconfig does not list explicitly. We want marble_defconfig
+    # itself as the base, then the fragments merged on top (default mode).
     ( cd "$OUT_DIR" && \
-      bash "$MERGE" -m -n -O "$OUT_DIR" \
+      bash "$MERGE" -m -O "$OUT_DIR" \
         "$CFG_DIR/marble_defconfig" "${MERGE_FILES[@]}" )
   else
     log "merge_config.sh not present; naive append fallback"

@@ -39,14 +39,6 @@ MENUCONFIG="${MENUCONFIG:-0}"
 # Default: aosp-noroot-production
 export FLAVOR="${FLAVOR:-aosp-noroot-production}"
 
-# Derive VERSION and KSU flag from FLAVOR for downstream scripts
-IFS='-' read -r _FLAVOR_PLATFORM _FLAVOR_ROOT _FLAVOR_PROFILE <<< "$FLAVOR"
-if [[ "$_FLAVOR_ROOT" == "ksu" || "$_FLAVOR_ROOT" == "ksunext" ]]; then
-  BUILD_KSU=1
-else
-  BUILD_KSU=0
-fi
-
 # Version string includes the flavor
 export VERSION="${VERSION:-6.18-ack-${FLAVOR}}"
 export SHA="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
@@ -55,7 +47,6 @@ log()  { printf "\033[1;34m[aurora]\033[0m %s\n" "$*"; }
 ok()   { printf "\033[1;32m[ok]\033[0m   %s\n" "$*"; }
 err()  { printf "\033[1;31m[err]\033[0m %s\n" "$*" >&2; exit 1; }
 
-export KSU="$BUILD_KSU"
 export MENUCONFIG
 
 # ---------------------------------------------------------------------------
@@ -100,7 +91,7 @@ case "$STAGE" in
     # ensure sources present
     [[ -d kernel-src ]] || run_stage "setup"      setup.sh
     [[ -d vendor-msm ]] || run_stage "vendor-fetch" scripts/vendor-fetch.sh
-    [[ -x toolchains/proton-clang/bin/clang ]] || run_stage "toolchain" scripts/toolchain.sh
+    [[ -f toolchains/toolchain.env ]] || run_stage "toolchain" scripts/toolchain.sh
 
     run_stage "gki"           scripts/build-gki.sh
     # ABI monitoring is informational in dev; KMI regressions are expected

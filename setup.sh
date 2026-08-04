@@ -109,7 +109,7 @@ else
   log "cloning KernelSU-Next (${KSU_BRANCH})"
   if ! git clone --depth=1 -b "$KSU_BRANCH" "$KSU_REPO" "$KSU_DIR"; then
     log "warning: KernelSU-Next clone failed; continuing WITHOUT root support"
-    log "         (build will succeed; set KSU=0 or fix network and re-run)"
+    log "         (build will succeed; use a noroot flavor or fix network and re-run)"
   fi
 fi
 [[ -d "$KSU_DIR/.git" ]] && ok "KernelSU-Next ready" || log "KernelSU-Next: skipped"

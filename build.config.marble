@@ -49,10 +49,10 @@ KMI_SYMBOL_LIST_ADD_ONLY=true
 # ---------------------------------------------------------------------------
 # The ACK build system uses these to enforce a stable kernel module interface.
 KMI_SYMBOL_LIST=android/abi_gki_aarch64
-ADDITIONAL_KMI_SYMBOL_LISTS="
-android/abi_gki_aarch64_core
-android/abi_gki_aarch64_qcom
-"
+# The ACK default additional lists (abi_gki_aarch64_core / abi_gki_aarch64_qcom)
+# are NOT shipped in this repo; keep ADDITIONAL empty so the build does not
+# fail looking for files that do not exist.
+ADDITIONAL_KMI_SYMBOL_LISTS=""
 KMI_ENFORCED=true
 # Don't abort the build if a vendor module references an unlisted symbol
 # during development; flip to true for release.

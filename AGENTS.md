@@ -70,8 +70,8 @@ See README.md → "Repository layout".
 
 ## KernelSU
 - Integrated as `drivers/kernelsu/` (copied from KernelSU-Next/kernel by setup.sh).
-- Toggle with `KSU=0 ./build.sh`.
-- Requires `CONFIG_KPROBES=y` (set in ksu.config fragment).
+- Toggle via the root flavor layer: `FLAVOR=aosp-ksunext-production ./build.sh` (ksu / ksunext / apatch / noroot).
+- Requires `CONFIG_KPROBES=y` (set in the base `configs/marble_defconfig`).
 
 ## KMI / ABI
 - Symbol list: `android/abi_gki_aarch64`.

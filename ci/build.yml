@@ -15,10 +15,49 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
-      - run: ./setup.sh
-      - run: ./scripts/toolchain.sh
-      - run: ./build.sh
-      - uses: actions/upload-artifact@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            bc bison build-essential ccache cpio curl flex git \
+            libelf-dev libncurses-dev libssl-dev lld llvm python3 \
+            zip zlib1g-dev e2fsprogs device-tree-compiler openssl gettext
+          # Ubuntu 22.04 ships clang-14; the snapshot repo is needed for clang-17
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - 2>/dev/null || true
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update -y
+          sudo apt-get install -y clang-17 lld-17 llvm-17 2>/dev/null || sudo apt-get install -y clang lld
+
+      - name: Install Google repo tool (for ACK manifest)
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
+          chmod a+x /usr/local/bin/repo
+
+      - name: Configure git for repo tool
+        run: |
+          git config --global user.email "ci@aurora-kernel.local"
+          git config --global user.name "Aurora CI"
+
+      - name: Fetch ACK 6.18 LTS + KSU + AnyKernel3
+        run: bash setup.sh
+
+      - name: Fetch vendor tree (Qualcomm marble)
+        run: bash scripts/vendor-fetch.sh
+        continue-on-error: true
+
+      - name: Bootstrap toolchain
+        run: bash scripts/toolchain.sh
+
+      - name: Apply patch queue
+        run: bash scripts/patch-apply.sh || true
+
+      - name: Build default flavor
+        run: bash build.sh
+
+      - name: Upload AnyKernel3 flashable zip
+        uses: actions/upload-artifact@v7
         with:
           name: aurora-kernel-marble
-          path: aurora-kernel-marble-*.zip
+          path: dist/aurora-kernel-marble-*.zip
+          if-no-files-found: error

@@ -80,8 +80,6 @@ for c in \
 done
 if [[ -n "$VENDOR_CFG" ]]; then
   ok "vendor defconfig: $VENDOR_CFG"
-  # record for config-merge.sh to consume
-  printf '%s\n' "$VENDOR_CFG" > .vendor_cfg_path
 else
   err "no vendor defconfig found under $VENDOR_DIR/arch/arm64/configs"
   err "the build will proceed with GKI-only symbols; expect vendor module link errors"

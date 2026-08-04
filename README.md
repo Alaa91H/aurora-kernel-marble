@@ -26,10 +26,10 @@ fscrypt v2, USB networking), and seamless **KernelSU-Next** integration.
 | SoC                    | Qualcomm Snapdragon 7+ Gen 2 (SM7475) |
 | Kernel base           | Android Common Kernel **6.18 LTS** (`common-android17-6.18`) |
 | Toolchain              | Clang 18 + LD.lld (AOSP)              |
-| Root solution          | KernelSU-Next                         |
+| Root solution          | Flavor-based (default `noroot`; KSU / KSU-Next / APatch opt-in) |
 | Flash method           | AnyKernel3                            |
 | Scheduler              | EAS (schedutil + UCLAMP)              |
-| I/O scheduler          | Flash-Friendly (maple)                |
+| I/O scheduler          | Flash-Friendly (BFQ)                  |
 | Compression            | zSTD                                  |
 | Page size              | 4096 (4KiB)                           |
 
@@ -47,7 +47,7 @@ aurora-kernel-marble/
 │   ├── vendor-fetch.sh         # Fetch Qualcomm/Xiaomi msm-kernel (SoC drivers)
 │   ├── build-gki.sh            # Build GKI core + vmlinux.symvers
 │   ├── build-vendor-modules.sh # Build vendor .ko against GKI KMI
-│   ├── pack-bootimg.sh         # boot/init_boot/vendor_boot/vendor_dlkm/dtbo + AVB
+│   ├── pack-bootimg.sh         # Assemble AnyKernel3 flashable zip
 │   ├── abi-monitor.sh          # Enforce KMI symbol stability
 │   ├── patch-apply.sh          # Apply patches/series (git am)
 │   └── config-merge.sh         # Merge fragments into defconfig
@@ -56,13 +56,12 @@ aurora-kernel-marble/
 │   ├── fragments/
 │   │   ├── performance.config  # CPU governor + schedtune
 │   │   ├── battery.config      # Idle + thermal + walt
-│   │   ├── ksu.config          # KernelSU-Next hooks
 │   │   ├── network.config      # WireGuard + USB-Net + BBR
 │   │   ├── virtualization.config # KVM + virtio + containers
 │   │   ├── display.config      # DSI panel + refresh + backlight + Adreno
-│   │   └── audio.config        # WCD9375 hi-res 24/32-bit + SoundWire + DSD
-│   ├── anykernel_marble.conf   # AnyKernel3 board config
-│   └── vendor_boot.img.cmdline # Kernel cmdline
+│   │   └── audio.config        # WCD9375 hi-res 24/32-bit + SLIMbus + DSD
+│   ├── flavors/                # platform/root/profile flavor layers
+│   └── vendor_boot.img.cmdline # Reference cmdline (not consumed by build)
 ├── arch/arm64/boot/dts/qcom/   # SM7475 device-tree
 │   ├── sm7475-marble.dtsi      # Board include (reserved memory)
 │   ├── marble-board.dts        # CPU topology + OPP tables
@@ -117,8 +116,8 @@ cd aurora-kernel-marble
 4. `build-gki.sh` — compile GKI core (`Image` + `vmlinux.symvers`)
 5. `abi-monitor.sh` — enforce KMI stability
 6. `build-vendor-modules.sh` — compile SoC `.ko` modules against GKI
-7. `pack-bootimg.sh` — assemble `boot.img`, `init_boot.img`,
-   `vendor_boot.img`, `vendor_dlkm.img`, `dtbo.img` (AVB-signed)
+7. `pack-bootimg.sh` — assemble the AnyKernel3 flashable zip
+   (dist/aurora-kernel-marble-*.zip) + sha256 checksum
 
 Individual stages:
 ```bash
@@ -160,8 +159,8 @@ Only the `boot` partition is touched. `vendor_boot`, `dtbo`,
 ### Outputs
 ```
 dist/
-├── aurora-kernel-marble-6.18-ack-<sha>.zip      # flashable zip (primary)
-├── aurora-kernel-marble-6.18-ack-<sha>.sha256   # checksum
+├── aurora-kernel-marble-6.18-ack-<flavor>-<sha>.zip      # flashable zip (primary)
+├── aurora-kernel-marble-6.18-ack-<flavor>-<sha>.sha256   # checksum
 ├── Image                                          # raw GKI kernel binary
 └── vmlinux.symvers                                # KMI contract (for module builds)
 ```
@@ -208,7 +207,7 @@ dist/
 - Adreno 725 DPU composition
 
 ### Audio (hi-res)
-- WCD9375 codec over SoundWire
+- WCD9375 codec over SLIMbus
 - 24/32-bit PCM up to 384kHz (native, no resampling)
 - Q6DSPV2 AFE/ASM/ADM audio core
 - Native DSD (Direct Stream Digital) support

@@ -5,6 +5,9 @@
 #
 # This runs AFTER the kernel boots but before zygote; safe to write sysfs.
 
+# pull in the profile-driven thermald trigger file (same ramdisk overlay)
+import /99-aurora-thermald.rc
+
 on early-init
     # set scheduling + cpufreq defaults early
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
@@ -28,18 +31,18 @@ on boot
     # apply sysctl tuning
     exec u:r:fsck:s0 -- /system/bin/sh /sbin/aurora-tune.sh
 
-    # IO scheduler: maple (flash-friendly) on UFS
-    write /sys/block/sda/queue/scheduler maple
-    write /sys/block/sda/queue/iosched/_slice_idle 0
+    # IO scheduler: BFQ (flash-friendly) on UFS
+    write /sys/block/sda/queue/scheduler bfq
+    write /sys/block/sda/queue/iosched/slice_idle 0
     write /sys/block/sda/queue/iosched/low_latency 1
 
     # zRAM: 4GB zstd-backed block
+    # NOTE: max_comp_streams was removed from the kernel (zram) long ago;
+    # disksize/comp_algorithm are set here only if zram0 already exists.
     write /sys/block/zram0/disksize 4294967296
     write /sys/block/zram0/comp_algorithm zstd
-    write /sys/block/zram0/max_comp_streams 8
     write /sys/block/zram0/writeback_limit_enable 1
     write /sys/block/zram0/writeback_limit 268435456
-    write /proc/swaps  # trigger
 
     # KSM + khugepaged
     write /sys/kernel/mm/ksm/run 1

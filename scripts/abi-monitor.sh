@@ -37,7 +37,8 @@ mkdir -p "$ABI_DIR"
 # ---------------------------------------------------------------------------
 log "extracting exported symbols from vmlinux.symvers"
 # Module.symvers lines: 0xcrc  symbol_name  namespace  module_name  export_type
-awk '{print $2}' "$SYMVERS" | sort -u > "$EXTRACTED"
+# skip the comment/header lines (begin with #) and blank lines
+awk '!/^[[:space:]]*#/ && NF >= 2 {print $2}' "$SYMVERS" | sort -u > "$EXTRACTED"
 ok "$(wc -l < "$EXTRACTED") symbols exported by GKI build"
 
 # ---------------------------------------------------------------------------

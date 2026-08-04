@@ -32,7 +32,9 @@ TC_ENV="$ROOT/toolchains/toolchain.env"
 [[ -f "$TC_ENV" ]] && source "$TC_ENV"
 TC_BIN="${TC_BIN:-$ROOT/toolchains/proton-clang/bin}"
 CLANG_BIN="${CC:-clang}"
-command -v "$CLANG_BIN" >/dev/null 2>&1 || [[ -x "$TC_BIN/$CLANG_BIN" ]] && CLANG_BIN="$TC_BIN/$CLANG_BIN"
+if ! command -v "$CLANG_BIN" >/dev/null 2>&1 && [[ -x "$TC_BIN/$CLANG_BIN" ]]; then
+  CLANG_BIN="$TC_BIN/$CLANG_BIN"
+fi
 command -v "$CLANG_BIN" >/dev/null 2>&1 || err "clang not available; run scripts/toolchain.sh"
 export CC="$CLANG_BIN"
 export LD="${LD:-ld.lld}"
